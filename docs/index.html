@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Store - Download</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            color: #e6edf3;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .logo {
+            width: 100px;
+            height: 100px;
+            background: #1565C0;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 32px rgba(21, 101, 192, 0.3);
+        }
+        .logo svg { width: 60px; height: 60px; fill: white; }
+        h1 { font-size: 2rem; margin-bottom: 8px; }
+        .version { color: #8b949e; font-size: 0.95rem; margin-bottom: 24px; }
+        .features {
+            text-align: left;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .features li {
+            padding: 8px 0;
+            font-size: 0.95rem;
+            color: #c9d1d9;
+            list-style: none;
+        }
+        .features li::before {
+            content: "✓ ";
+            color: #3DDC84;
+            font-weight: bold;
+        }
+        .download-btn {
+            display: inline-block;
+            background: #1565C0;
+            color: white;
+            text-decoration: none;
+            padding: 16px 48px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(21, 101, 192, 0.4);
+        }
+        .download-btn:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(21, 101, 192, 0.5);
+        }
+        .download-btn:active { transform: translateY(0); }
+        .badge {
+            display: inline-block;
+            background: #238636;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 16px;
+        }
+        .footer {
+            margin-top: 32px;
+            color: #484f58;
+            font-size: 0.85rem;
+        }
+        .footer a { color: #58a6ff; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+                <path d="M54,30 C40.2,30 29,41.2 29,55 C29,65.8 36.2,75 45.6,78.6 C46.8,78.8 47.2,78.1 47.2,77.5 L47.2,73 C40,74.4 38.6,70 38.6,70 C37.6,67.4 36.2,66.8 36.2,66.8 C34.2,65.4 36.4,65.4 36.4,65.4 C38.6,65.6 39.8,67.6 39.8,67.6 C42,71.2 45.2,70.2 47.2,69.4 C47.4,67.8 48.2,66.6 49,65.8 C43.2,65 37,62.8 37,53.8 C37,51 37.8,48.6 39.4,46.8 C39.2,46 38.4,43.6 39.8,40.4 C39.8,40.4 42,39.8 47.2,42.8 C49.4,42.2 51.6,41.8 54,41.8 C56.4,41.8 58.6,42.2 60.8,42.8 C66,39.8 68.2,40.4 68.2,40.4 C69.6,43.6 68.8,46 68.6,46.8 C70.2,48.6 71,51 71,53.8 C71,62.8 64.8,65 59,65.8 C59.8,66.8 60.8,68.6 60.8,71.4 L60.8,77.5 C60.8,78.1 61.2,78.8 62.4,78.6 C71.8,75 79,65.8 79,55 C79,41.2 67.8,30 54,30 Z"/>
+            </svg>
+        </div>
+        <h1>GitHub Store</h1>
+        <p class="version">Version 1.1.0</p>
+        <ul class="features">
+            <li>Browse trending GitHub repositories</li>
+            <li>Search by language, topic, or keyword</li>
+            <li>Download APKs and installable files</li>
+            <li>Favorites and offline reading</li>
+            <li>Dark/Light theme support</li>
+            <li>GitHub Token for higher API limits</li>
+        </ul>
+        <a href="https://github.com/kevinriverrrr-sudo/GitHubStore/releases/download/v1.1.0/GitHubStore-v1.1.0.apk" class="download-btn">
+            Download APK
+        </a>
+        <div class="badge">Android 8.0+ (API 26)</div>
+        <div class="footer">
+            <p>Open Source &middot; <a href="https://github.com/kevinriverrrr-sudo/GitHubStore">Source Code</a></p>
+        </div>
+    </div>
+</body>
+</html>
