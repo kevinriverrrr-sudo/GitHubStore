@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#1565C0</color>
+    <string name="about">About</string>
+    <string name="added_to_favorites">Added to favorites</string>
+    <string name="all_apps">All</string>
+    <string name="android_apps">Android</string>
+    <string name="api_rate_limit">API rate limit reached. Sign in for more requests.</string>
+    <string name="app_description">Discover and install open source apps from GitHub</string>
+    <string name="app_name">GitHub Store</string>
+    <string name="cancel">Cancel</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="default_folder">Default</string>
+    <string name="desktop_apps">Desktop</string>
+    <string name="download_complete">Download complete</string>
+    <string name="download_failed">Download failed</string>
+    <string name="download_folder">Download Folder</string>
+    <string name="downloading">Downloading…</string>
+    <string name="downloads">Downloads</string>
+    <string name="english">English</string>
+    <string name="error_loading">Error loading data</string>
+    <string name="favorites">Favorites</string>
+    <string name="forks">Forks</string>
+    <string name="install">Install</string>
+    <string name="ios_apps">iOS</string>
+    <string name="issues">Issues</string>
+    <string name="language">Language</string>
+    <string name="license">License</string>
+    <string name="light_mode">Light Mode</string>
+    <string name="linux_apps">Linux</string>
+    <string name="loading">Loading…</string>
+    <string name="no_apk_found">No APK found in releases</string>
+    <string name="no_folder_selected">No folder selected</string>
+    <string name="no_results">No repositories found</string>
+    <string name="proxy">Proxy</string>
+    <string name="proxy_host">Proxy Host</string>
+    <string name="proxy_port">Proxy Port</string>
+    <string name="readme">Readme</string>
+    <string name="removed_from_favorites">Removed from favorites</string>
+    <string name="request_install">Please allow installing from unknown sources</string>
+    <string name="retry">Retry</string>
+    <string name="russian">Русский</string>
+    <string name="save">Save</string>
+    <string name="search_hint">Search repositories…</string>
+    <string name="select_folder">Select Download Folder</string>
+    <string name="settings">Settings</string>
+    <string name="share">Share</string>
+    <string name="size">Size</string>
+    <string name="stars">Stars</string>
+    <string name="system_mode">System Default</string>
+    <string name="theme">Theme</string>
+    <string name="trending">Trending</string>
+    <string name="unknown">Unknown</string>
+    <string name="updated">Updated</string>
+    <string name="use_this_folder">Use this folder</string>
+    <string name="version">Version</string>
+    <style name="Theme.GitHubStore" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
