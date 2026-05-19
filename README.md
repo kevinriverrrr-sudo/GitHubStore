@@ -25,9 +25,9 @@
 
 ## 📸 Screenshots
 
-| Home Screen | App Details | Settings |
-|---|---|---|
-| Browse trending repos with category filters | View repo info, download releases | Theme, language, proxy, and more |
+| Home | Detail | Settings | Favorites |
+|------|--------|----------|-----------|
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_home.png" width="200"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_detail.png" width="200"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_settings.png" width="200"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_favorites.png" width="200"> |
 
 ## 🏗️ Tech Stack
 
