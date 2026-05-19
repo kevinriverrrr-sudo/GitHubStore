@@ -98,10 +98,14 @@ class AppRepository(private val api: GithubApi) {
     }
 
     suspend fun getRateLimit(): ApiRateLimit? {
-        return api.getRateLimit()
+        return try {
+            api.getRateLimit()
+        } catch (_: Exception) {
+            null
+        }
     }
 
-    fun downloadFile(url: String, destinationPath: String, onProgress: (Long, Long) -> Unit): Boolean {
+    suspend fun downloadFile(url: String, destinationPath: String, onProgress: (Long, Long) -> Unit): Boolean {
         return api.downloadFile(url, destinationPath, onProgress)
     }
 

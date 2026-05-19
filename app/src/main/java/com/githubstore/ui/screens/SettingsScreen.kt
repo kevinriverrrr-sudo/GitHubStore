@@ -220,7 +220,7 @@ private fun SettingsItem(
         },
         modifier = Modifier.clickable(onClick = onClick)
     )
-    Divider()
+    HorizontalDivider()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

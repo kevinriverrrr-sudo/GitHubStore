@@ -1,15 +1,12 @@
 package com.githubstore.ui.viewmodel
 
-import android.app.DownloadManager
 import android.content.Context
-import android.database.Cursor
+import android.content.Intent
 import android.net.Uri
-import android.os.Environment
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.githubstore.data.model.GithubRelease
-import com.githubstore.data.model.GithubRepo
 import com.githubstore.data.model.ReleaseAsset
 import com.githubstore.data.repository.AppRepository
 import com.githubstore.util.FavoritesManager
@@ -20,7 +17,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 data class DetailUiState(
-    val repo: GithubRepo? = null,
+    val repo: com.githubstore.data.model.GithubRepo? = null,
     val releases: List<GithubRelease> = emptyList(),
     val readme: String? = null,
     val isLoading: Boolean = false,
@@ -144,15 +141,14 @@ class DetailViewModel(
                     file
                 )
             } catch (_: Exception) {
-                // Fallback for older Android
                 @Suppress("DEPRECATION")
                 Uri.fromFile(file)
             }
 
-            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
         } catch (_: Exception) {}

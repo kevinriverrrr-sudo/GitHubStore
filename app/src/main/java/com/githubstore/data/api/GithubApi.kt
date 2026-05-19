@@ -24,8 +24,11 @@ class GithubApi(
 
     private val baseUrl = "https://api.github.com"
 
+    @Volatile
     private var _client: OkHttpClient? = null
-    val client: OkHttpClient get() = _client ?: buildHttpClient().also { _client = it }
+    val client: OkHttpClient get() = _client ?: synchronized(this) {
+        _client ?: buildHttpClient().also { _client = it }
+    }
 
     private fun buildHttpClient(): OkHttpClient {
         val builder = OkHttpClient.Builder()
@@ -55,7 +58,9 @@ class GithubApi(
     fun updateProxy(host: String?, port: Int) {
         proxyHost = host
         proxyPort = port
-        _client = buildHttpClient()
+        synchronized(this) {
+            _client = buildHttpClient()
+        }
     }
 
     fun updateToken(token: String?) {
@@ -179,34 +184,38 @@ class GithubApi(
         }
     }
 
-    fun downloadFile(url: String, destinationPath: String, onProgress: (Long, Long) -> Unit): Boolean {
-        return try {
-            val request = Request.Builder().url(url).build()
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return false
+    suspend fun downloadFile(url: String, destinationPath: String, onProgress: (Long, Long) -> Unit): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder().url(url).build()
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) return@withContext false
 
-            val body = response.body ?: return false
-            val contentLength = body.contentLength()
-            var bytesRead = 0L
+                val body = response.body ?: return@withContext false
+                val contentLength = body.contentLength()
+                var bytesRead = 0L
 
-            val destFile = java.io.File(destinationPath)
-            destFile.parentFile?.mkdirs()
+                val destFile = java.io.File(destinationPath)
+                destFile.parentFile?.mkdirs()
 
-            destFile.outputStream().use { output ->
-                body.byteStream().use { input ->
-                    val buffer = ByteArray(8192)
-                    var bytes = input.read(buffer)
-                    while (bytes >= 0) {
-                        output.write(buffer, 0, bytes)
-                        bytesRead += bytes
-                        onProgress(bytesRead, contentLength)
-                        bytes = input.read(buffer)
+                destFile.outputStream().use { output ->
+                    body.byteStream().use { input ->
+                        val buffer = ByteArray(8192)
+                        var bytes = input.read(buffer)
+                        while (bytes >= 0) {
+                            output.write(buffer, 0, bytes)
+                            bytesRead += bytes
+                            withContext(Dispatchers.Main) {
+                                onProgress(bytesRead, contentLength)
+                            }
+                            bytes = input.read(buffer)
+                        }
                     }
                 }
+                true
+            } catch (_: Exception) {
+                false
             }
-            true
-        } catch (_: Exception) {
-            false
         }
     }
 

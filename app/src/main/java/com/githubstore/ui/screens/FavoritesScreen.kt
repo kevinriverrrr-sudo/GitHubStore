@@ -87,7 +87,10 @@ fun FavoritesScreen(
                         RepoCard(
                             repo = repo,
                             isFavorite = true,
-                            onClick = { onRepoClick(repo.owner.login, repo.name) },
+                            onClick = {
+                                val ownerLogin = repo.owner?.login ?: return@RepoCard
+                                onRepoClick(ownerLogin, repo.name)
+                            },
                             onFavoriteClick = { viewModel.removeFavorite(repo.full_name) }
                         )
                     }

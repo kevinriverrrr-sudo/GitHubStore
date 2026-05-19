@@ -204,7 +204,10 @@ fun HomeScreen(
                             RepoCard(
                                 repo = repo,
                                 isFavorite = uiState.favorites.contains(repo.full_name),
-                                onClick = { onRepoClick(repo.owner.login, repo.name) },
+                                onClick = {
+                                    val ownerLogin = repo.owner?.login ?: return@RepoCard
+                                    onRepoClick(ownerLogin, repo.name)
+                                },
                                 onFavoriteClick = { viewModel.toggleFavorite(repo.full_name) }
                             )
                         }

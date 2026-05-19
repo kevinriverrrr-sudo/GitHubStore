@@ -94,7 +94,7 @@ fun DetailScreen(
         }
     ) { paddingValues ->
         when {
-            uiState.isLoading -> {
+            uiState.isLoading && uiState.repo == null -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -104,7 +104,7 @@ fun DetailScreen(
                     CircularProgressIndicator()
                 }
             }
-            uiState.error != null -> {
+            uiState.error != null && uiState.repo == null -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -136,8 +136,8 @@ fun DetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         AsyncImage(
-                            model = repo.owner.avatar_url,
-                            contentDescription = repo.owner.login,
+                            model = repo.owner?.avatar_url,
+                            contentDescription = repo.owner?.login ?: "",
                             modifier = Modifier
                                 .size(80.dp)
                                 .clip(CircleShape)
@@ -149,7 +149,7 @@ fun DetailScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = repo.owner.login,
+                            text = repo.owner?.login ?: "",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -227,7 +227,7 @@ fun DetailScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                uiState.installableAssets.forEach { asset ->
+                                uiState.installableAssets.forEachIndexed { index, asset ->
                                     DownloadRow(
                                         asset = asset,
                                         isDownloading = uiState.isDownloading,
@@ -236,7 +236,9 @@ fun DetailScreen(
                                             viewModel.downloadAndInstall(context, asset, downloadDir)
                                         }
                                     )
-                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                    if (index < uiState.installableAssets.lastIndex) {
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                    }
                                 }
                             }
                         }
@@ -257,13 +259,11 @@ fun DetailScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                uiState.repo?.let { repo ->
-                                    TextButton(onClick = {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(repo.html_url))
-                                        context.startActivity(intent)
-                                    }) {
-                                        Text("View on GitHub")
-                                    }
+                                TextButton(onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(repo.html_url))
+                                    context.startActivity(intent)
+                                }) {
+                                    Text("View on GitHub")
                                 }
                             }
                         }
@@ -367,7 +367,7 @@ private fun DownloadRow(
             if (isDownloading) {
                 Spacer(modifier = Modifier.height(4.dp))
                 LinearProgressIndicator(
-                    progress = downloadProgress,
+                    progress = { downloadProgress },
                     modifier = Modifier.fillMaxWidth(0.6f),
                     color = InstallBlue
                 )

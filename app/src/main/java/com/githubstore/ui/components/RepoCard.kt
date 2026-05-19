@@ -52,8 +52,8 @@ fun RepoCard(
         ) {
             // Owner avatar
             AsyncImage(
-                model = repo.owner.avatar_url,
-                contentDescription = repo.owner.login,
+                model = repo.owner?.avatar_url,
+                contentDescription = repo.owner?.login ?: "",
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
@@ -76,7 +76,7 @@ fun RepoCard(
                 )
 
                 Text(
-                    text = repo.owner.login,
+                    text = repo.owner?.login ?: "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -118,7 +118,7 @@ fun RepoCard(
                     }
 
                     // Language
-                    if (repo.language != null) {
+                    if (!repo.language.isNullOrBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 modifier = Modifier.size(10.dp),
@@ -127,7 +127,7 @@ fun RepoCard(
                             ) {}
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = repo.language!!,
+                                text = repo.language,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
