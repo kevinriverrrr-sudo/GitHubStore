@@ -1,7 +1,11 @@
 package com.githubstore.ui.viewmodel
 
+import android.app.DownloadManager
 import android.content.Context
+import android.database.Cursor
+import android.net.Uri
 import android.os.Environment
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.githubstore.data.model.GithubRelease
@@ -13,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class DetailUiState(
     val repo: GithubRepo? = null,
@@ -37,7 +42,7 @@ class DetailViewModel(
 
     fun loadRepoDetails(owner: String, repoName: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             val repo = repository.getRepoDetails(owner, repoName)
             if (repo != null) {
@@ -88,28 +93,37 @@ class DetailViewModel(
                 downloadStatus = "downloading"
             )
 
-            val fileName = asset.name
-            val destDir = downloadDir ?: Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
-            val destPath = "$destDir/$fileName"
+            try {
+                val fileName = asset.name
 
-            val success = repository.downloadFile(
-                url = asset.download_url,
-                destinationPath = destPath
-            ) { bytesRead, totalBytes ->
-                val progress = if (totalBytes > 0) bytesRead.toFloat() / totalBytes else 0f
-                _uiState.value = _uiState.value.copy(downloadProgress = progress)
-            }
+                // Use app's internal cache directory to avoid scoped storage issues
+                val cacheDir = File(context.cacheDir, "downloads")
+                if (!cacheDir.exists()) cacheDir.mkdirs()
+                val destPath = File(cacheDir, fileName).absolutePath
 
-            if (success) {
-                _uiState.value = _uiState.value.copy(
-                    isDownloading = false,
-                    downloadStatus = "complete"
-                )
-                // Trigger install if APK
-                if (fileName.endsWith(".apk", ignoreCase = true)) {
-                    installApk(context, destPath)
+                val success = repository.downloadFile(
+                    url = asset.download_url,
+                    destinationPath = destPath
+                ) { bytesRead, totalBytes ->
+                    val progress = if (totalBytes > 0) bytesRead.toFloat() / totalBytes else 0f
+                    _uiState.value = _uiState.value.copy(downloadProgress = progress)
                 }
-            } else {
+
+                if (success) {
+                    _uiState.value = _uiState.value.copy(
+                        isDownloading = false,
+                        downloadStatus = "complete"
+                    )
+                    if (fileName.endsWith(".apk", ignoreCase = true)) {
+                        installApk(context, destPath)
+                    }
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isDownloading = false,
+                        downloadStatus = "failed"
+                    )
+                }
+            } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isDownloading = false,
                     downloadStatus = "failed"
@@ -120,14 +134,20 @@ class DetailViewModel(
 
     private fun installApk(context: Context, filePath: String) {
         try {
-            val file = java.io.File(filePath)
+            val file = File(filePath)
             if (!file.exists()) return
 
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
+            val uri: Uri = try {
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+            } catch (_: Exception) {
+                // Fallback for older Android
+                @Suppress("DEPRECATION")
+                Uri.fromFile(file)
+            }
 
             val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")

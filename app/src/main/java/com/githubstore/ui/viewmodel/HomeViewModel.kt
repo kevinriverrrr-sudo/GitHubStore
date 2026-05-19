@@ -2,7 +2,6 @@ package com.githubstore.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.githubstore.data.api.GithubApi
 import com.githubstore.data.model.GithubRepo
 import com.githubstore.data.repository.AppRepository
 import com.githubstore.data.repository.RepositoryResult

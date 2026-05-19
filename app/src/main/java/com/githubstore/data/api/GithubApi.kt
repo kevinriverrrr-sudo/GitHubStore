@@ -3,6 +3,7 @@ package com.githubstore.data.api
 import com.githubstore.data.model.*
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,7 +24,8 @@ class GithubApi(
 
     private val baseUrl = "https://api.github.com"
 
-    private val client: OkHttpClient by lazy { buildHttpClient() }
+    private var _client: OkHttpClient? = null
+    val client: OkHttpClient get() = _client ?: buildHttpClient().also { _client = it }
 
     private fun buildHttpClient(): OkHttpClient {
         val builder = OkHttpClient.Builder()
@@ -53,6 +55,7 @@ class GithubApi(
     fun updateProxy(host: String?, port: Int) {
         proxyHost = host
         proxyPort = port
+        _client = buildHttpClient()
     }
 
     fun updateToken(token: String?) {
@@ -64,7 +67,7 @@ class GithubApi(
             try {
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) {
-                    if (response.code == 403) {
+                    if (response.code == 403 || response.code == 429) {
                         throw RateLimitException("API rate limit exceeded")
                     }
                     return@withContext null
@@ -98,7 +101,8 @@ class GithubApi(
         page: Int = 1,
         perPage: Int = 30
     ): SearchResponse? {
-        val url = "${baseUrl}/search/repositories?q=${java.net.URLEncoder.encode(query, "UTF-8")}" +
+        val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+        val url = "${baseUrl}/search/repositories?q=$encodedQuery" +
                 "&sort=$sort&order=$order&page=$page&per_page=$perPage"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<SearchResponse>() {}.type
@@ -118,16 +122,6 @@ class GithubApi(
         }
         val langFilter = if (!language.isNullOrBlank()) "language:$language " else ""
         val query = "$langFilter$dateFilter stars:>10"
-        val result = searchRepositories(query, page = page, perPage = perPage)
-        return result?.items ?: emptyList()
-    }
-
-    suspend fun getRepositoriesByTopic(
-        topic: String,
-        page: Int = 1,
-        perPage: Int = 30
-    ): List<GithubRepo> {
-        val query = "topic:$topic"
         val result = searchRepositories(query, page = page, perPage = perPage)
         return result?.items ?: emptyList()
     }
@@ -171,14 +165,14 @@ class GithubApi(
         val request = Request.Builder().url(url).build()
         val responseJson = executeStringRequest(request) ?: return null
         return try {
-            val jsonObject = gson.fromJson(responseJson, Map::class.java) as Map<*, *>
-            val resources = jsonObject["resources"] as Map<*, *>
-            val core = resources["core"] as Map<*, *>
+            val jsonObject = JsonParser.parseString(responseJson).asJsonObject
+            val resources = jsonObject.getAsJsonObject("resources")
+            val core = resources.getAsJsonObject("core")
             ApiRateLimit(
-                limit = (core["limit"] as Double).toInt(),
-                remaining = (core["remaining"] as Double).toInt(),
-                reset = (core["reset"] as Double).toLong(),
-                used = (core["used"] as Double).toInt()
+                limit = core.get("limit").asInt,
+                remaining = core.get("remaining").asInt,
+                reset = core.get("reset").asLong,
+                used = core.get("used").asInt
             )
         } catch (_: Exception) {
             null
@@ -195,7 +189,10 @@ class GithubApi(
             val contentLength = body.contentLength()
             var bytesRead = 0L
 
-            java.io.File(destinationPath).outputStream().use { output ->
+            val destFile = java.io.File(destinationPath)
+            destFile.parentFile?.mkdirs()
+
+            destFile.outputStream().use { output ->
                 body.byteStream().use { input ->
                     val buffer = ByteArray(8192)
                     var bytes = input.read(buffer)

@@ -14,14 +14,13 @@ data class GithubRepo(
     val stargazers_count: Int,
     val forks_count: Int,
     val open_issues_count: Int,
+    @SerializedName("topics")
     val topics: List<String> = emptyList(),
     val license: LicenseInfo?,
     val updated_at: String,
     val created_at: String,
     val size: Long,
-    val default_branch: String = "main",
-    @SerializedName("topics")
-    val repoTopics: List<String>? = null
+    val default_branch: String = "main"
 )
 
 data class Owner(

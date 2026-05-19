@@ -40,10 +40,6 @@ fun DetailScreen(
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    LaunchedEffect(owner, repoName) {
-        viewModel.loadRepoDetails(owner, repoName)
-    }
-
     Scaffold(
         modifier = Modifier,
         topBar = {
@@ -86,7 +82,7 @@ fun DetailScreen(
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(repo.html_url))
                             context.startActivity(intent)
                         }) {
-                            Icon(Icons.Default.OpenInBrowser, contentDescription = "Open in browser")
+                            Icon(Icons.Default.OpenInNew, contentDescription = "Open in browser")
                         }
                     }
                 },

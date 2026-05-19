@@ -30,9 +30,9 @@ class FavoritesManager(context: Context) {
     private fun loadFavorites(): MutableSet<String> {
         return try {
             if (favoritesFile.exists()) {
-            val json = favoritesFile.readText()
+                val json = favoritesFile.readText()
                 val type = object : TypeToken<MutableSet<String>>() {}.type
-                gson.fromJson(json, type) ?: mutableSetOf()
+                gson.fromJson<MutableSet<String>>(json, type) ?: mutableSetOf()
             } else {
                 mutableSetOf()
             }

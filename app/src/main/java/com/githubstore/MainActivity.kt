@@ -4,11 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,16 +31,18 @@ class MainActivity : ComponentActivity() {
         app = application as GitHubStoreApp
 
         setContent {
-            var isDarkTheme by remember { mutableStateOf(false) }
+            var themeSetting by remember { mutableStateOf("system") }
 
             LaunchedEffect(Unit) {
                 app.settingsManager.themeFlow.collect { theme ->
-                    isDarkTheme = when (theme) {
-                        "dark" -> true
-                        "light" -> false
-                        else -> false // system default handled by isSystemInDarkTheme
-                    }
+                    themeSetting = theme
                 }
+            }
+
+            val isDarkTheme = when (themeSetting) {
+                "dark" -> true
+                "light" -> false
+                else -> isSystemInDarkTheme()
             }
 
             GitHubStoreTheme(
@@ -56,8 +60,11 @@ class MainActivity : ComponentActivity() {
                         startDestination = "home"
                     ) {
                         composable("home") {
+                            val viewModel: HomeViewModel = viewModel(
+                                factory = HomeViewModelFactory(app.repository, app.favoritesManager)
+                            )
                             HomeScreen(
-                                viewModel = HomeViewModel(app.repository, app.favoritesManager),
+                                viewModel = viewModel,
                                 onRepoClick = { owner, repo ->
                                     navController.navigate("detail/$owner/$repo")
                                 },
@@ -79,18 +86,30 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             val owner = backStackEntry.arguments?.getString("owner") ?: ""
                             val repo = backStackEntry.arguments?.getString("repo") ?: ""
+                            val viewModel: DetailViewModel = viewModel(
+                                factory = DetailViewModelFactory(app.repository, app.favoritesManager)
+                            )
+                            LaunchedEffect(owner, repo) {
+                                viewModel.loadRepoDetails(owner, repo)
+                            }
                             DetailScreen(
-                                viewModel = DetailViewModel(app.repository, app.favoritesManager),
+                                viewModel = viewModel,
                                 owner = owner,
                                 repoName = repo,
-                                downloadDir = "", // Will be fetched from settings
+                                downloadDir = "",
                                 onBack = { navController.popBackStack() }
                             )
                         }
 
                         composable("favorites") {
+                            val viewModel: FavoritesViewModel = viewModel(
+                                factory = FavoritesViewModelFactory(app.repository, app.favoritesManager)
+                            )
+                            LaunchedEffect(Unit) {
+                                viewModel.loadFavorites()
+                            }
                             FavoritesScreen(
-                                viewModel = FavoritesViewModel(app.repository, app.favoritesManager),
+                                viewModel = viewModel,
                                 onRepoClick = { owner, repo ->
                                     navController.navigate("detail/$owner/$repo")
                                 },
@@ -99,8 +118,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("settings") {
+                            val viewModel: SettingsViewModel = viewModel(
+                                factory = SettingsViewModelFactory(app.settingsManager, app.repository, app.githubApi)
+                            )
                             SettingsScreen(
-                                viewModel = SettingsViewModel(app.settingsManager, app.repository, app.githubApi),
+                                viewModel = viewModel,
                                 onBack = { navController.popBackStack() }
                             )
                         }
@@ -108,5 +130,47 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+// ViewModel Factories for proper lifecycle management
+class HomeViewModelFactory(
+    private val repository: com.githubstore.data.repository.AppRepository,
+    private val favoritesManager: com.githubstore.util.FavoritesManager
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        @Suppress("UNCHECKED_CAST")
+        return HomeViewModel(repository, favoritesManager) as T
+    }
+}
+
+class DetailViewModelFactory(
+    private val repository: com.githubstore.data.repository.AppRepository,
+    private val favoritesManager: com.githubstore.util.FavoritesManager
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        @Suppress("UNCHECKED_CAST")
+        return DetailViewModel(repository, favoritesManager) as T
+    }
+}
+
+class FavoritesViewModelFactory(
+    private val repository: com.githubstore.data.repository.AppRepository,
+    private val favoritesManager: com.githubstore.util.FavoritesManager
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        @Suppress("UNCHECKED_CAST")
+        return FavoritesViewModel(repository, favoritesManager) as T
+    }
+}
+
+class SettingsViewModelFactory(
+    private val settingsManager: com.githubstore.util.SettingsManager,
+    private val repository: com.githubstore.data.repository.AppRepository,
+    private val api: com.githubstore.data.api.GithubApi
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        @Suppress("UNCHECKED_CAST")
+        return SettingsViewModel(settingsManager, repository, api) as T
     }
 }
