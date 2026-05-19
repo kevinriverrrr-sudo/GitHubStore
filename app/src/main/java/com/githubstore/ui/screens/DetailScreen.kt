@@ -33,7 +33,6 @@ fun DetailScreen(
     viewModel: DetailViewModel,
     owner: String,
     repoName: String,
-    downloadDir: String,
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -170,25 +169,27 @@ fun DetailScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Description
-                    if (!repo.description.isNullOrBlank()) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "Description",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    repo.description!!,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                    repo.description?.let { desc ->
+                        if (desc.isNotBlank()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        "Description",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        desc,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -233,7 +234,7 @@ fun DetailScreen(
                                         isDownloading = uiState.isDownloading,
                                         downloadProgress = uiState.downloadProgress,
                                         onDownload = {
-                                            viewModel.downloadAndInstall(context, asset, downloadDir)
+                                            viewModel.downloadAndInstall(context, asset)
                                         }
                                     )
                                     if (index < uiState.installableAssets.lastIndex) {
@@ -272,7 +273,7 @@ fun DetailScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Readme
-                    if (uiState.readme != null) {
+                    uiState.readme?.let { readme ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -287,10 +288,10 @@ fun DetailScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 val maxReadmeLength = 2000
-                                val readmeText = if (uiState.readme!!.length > maxReadmeLength) {
-                                    uiState.readme!!.substring(0, maxReadmeLength) + "..."
+                                val readmeText = if (readme.length > maxReadmeLength) {
+                                    readme.substring(0, maxReadmeLength) + "..."
                                 } else {
-                                    uiState.readme!!
+                                    readme
                                 }
                                 Text(
                                     readmeText,

@@ -9,6 +9,7 @@ import com.githubstore.util.SettingsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
@@ -34,32 +35,32 @@ class SettingsViewModel(
     init {
         viewModelScope.launch {
             settingsManager.themeFlow.collect { theme ->
-                _uiState.value = _uiState.value.copy(theme = theme)
+                _uiState.update { it.copy(theme = theme) }
             }
         }
         viewModelScope.launch {
             settingsManager.languageFlow.collect { lang ->
-                _uiState.value = _uiState.value.copy(language = lang)
+                _uiState.update { it.copy(language = lang) }
             }
         }
         viewModelScope.launch {
             settingsManager.proxyHostFlow.collect { host ->
-                _uiState.value = _uiState.value.copy(proxyHost = host, isProxyEnabled = host.isNotBlank())
+                _uiState.update { it.copy(proxyHost = host, isProxyEnabled = host.isNotBlank()) }
             }
         }
         viewModelScope.launch {
             settingsManager.proxyPortFlow.collect { port ->
-                _uiState.value = _uiState.value.copy(proxyPort = port)
+                _uiState.update { it.copy(proxyPort = port) }
             }
         }
         viewModelScope.launch {
             settingsManager.downloadDirFlow.collect { dir ->
-                _uiState.value = _uiState.value.copy(downloadDir = dir)
+                _uiState.update { it.copy(downloadDir = dir) }
             }
         }
         viewModelScope.launch {
             settingsManager.authTokenFlow.collect { token ->
-                _uiState.value = _uiState.value.copy(authToken = token)
+                _uiState.update { it.copy(authToken = token) }
             }
         }
         loadRateLimit()
@@ -109,7 +110,7 @@ class SettingsViewModel(
     fun loadRateLimit() {
         viewModelScope.launch {
             val limit = repository.getRateLimit()
-            _uiState.value = _uiState.value.copy(rateLimit = limit)
+            _uiState.update { it.copy(rateLimit = limit) }
         }
     }
 }

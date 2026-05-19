@@ -2,6 +2,7 @@ package com.githubstore.data.repository
 
 import com.githubstore.data.api.GithubApi
 import com.githubstore.data.model.*
+import kotlinx.coroutines.CancellationException
 
 class AppRepository(private val api: GithubApi) {
 
@@ -19,6 +20,8 @@ class AppRepository(private val api: GithubApi) {
             }
         } catch (e: GithubApi.RateLimitException) {
             RepositoryResult.RateLimited
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             RepositoryResult.Error("Network error")
         }
@@ -40,6 +43,8 @@ class AppRepository(private val api: GithubApi) {
             RepositoryResult.Success(repos, repos.size)
         } catch (e: GithubApi.RateLimitException) {
             RepositoryResult.RateLimited
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             RepositoryResult.Error("Network error")
         }
@@ -68,6 +73,8 @@ class AppRepository(private val api: GithubApi) {
     suspend fun getRepoDetails(owner: String, repo: String): GithubRepo? {
         return try {
             api.getRepository(owner, repo)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         }
@@ -76,6 +83,8 @@ class AppRepository(private val api: GithubApi) {
     suspend fun getReleases(owner: String, repo: String): List<GithubRelease> {
         return try {
             api.getReleases(owner, repo)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             emptyList()
         }
@@ -84,6 +93,8 @@ class AppRepository(private val api: GithubApi) {
     suspend fun getLatestRelease(owner: String, repo: String): GithubRelease? {
         return try {
             api.getLatestRelease(owner, repo)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         }
@@ -92,6 +103,8 @@ class AppRepository(private val api: GithubApi) {
     suspend fun getReadme(owner: String, repo: String): String? {
         return try {
             api.getReadme(owner, repo)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         }

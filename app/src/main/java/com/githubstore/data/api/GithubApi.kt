@@ -5,18 +5,21 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 class GithubApi(
-    private var authToken: String? = null,
-    private var proxyHost: String? = null,
-    private var proxyPort: Int = 0
+    @Volatile private var authToken: String? = null,
+    @Volatile private var proxyHost: String? = null,
+    @Volatile private var proxyPort: Int = 0
 ) {
     private val gson: Gson = GsonBuilder()
         .setDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
@@ -70,18 +73,23 @@ class GithubApi(
     private suspend fun <T> executeRequest(request: Request, typeToken: java.lang.reflect.Type): T? {
         return withContext(Dispatchers.IO) {
             try {
-                val response = client.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    if (response.code == 403 || response.code == 429) {
-                        throw RateLimitException("API rate limit exceeded")
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        if (response.code == 403 || response.code == 429) {
+                            throw RateLimitException("API rate limit exceeded")
+                        }
+                        return@withContext null
                     }
-                    return@withContext null
+                    val body = response.body?.string() ?: return@withContext null
+                    gson.fromJson<T>(body, typeToken)
                 }
-                val body = response.body?.string() ?: return@withContext null
-                gson.fromJson<T>(body, typeToken)
             } catch (e: RateLimitException) {
                 throw e
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: IOException) {
+                null
+            } catch (_: Exception) {
                 null
             }
         }
@@ -90,9 +98,12 @@ class GithubApi(
     private suspend fun executeStringRequest(request: Request): String? {
         return withContext(Dispatchers.IO) {
             try {
-                val response = client.newCall(request).execute()
-                if (!response.isSuccessful) return@withContext null
-                response.body?.string()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+                    response.body?.string()
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: IOException) {
                 null
             }
@@ -106,7 +117,7 @@ class GithubApi(
         page: Int = 1,
         perPage: Int = 30
     ): SearchResponse? {
-        val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+        val encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8)
         val url = "${baseUrl}/search/repositories?q=$encodedQuery" +
                 "&sort=$sort&order=$order&page=$page&per_page=$perPage"
         val request = Request.Builder().url(url).build()
@@ -157,10 +168,14 @@ class GithubApi(
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<ReadmeContent>() {}.type
         val readme = executeRequest<ReadmeContent>(request, type) ?: return null
-        return try {
-            android.util.Base64.decode(readme.content, android.util.Base64.DEFAULT)
-                .toString(Charsets.UTF_8)
-        } catch (_: Exception) {
+        return if (readme.encoding.equals("base64", ignoreCase = true)) {
+            try {
+                android.util.Base64.decode(readme.content, android.util.Base64.DEFAULT)
+                    .toString(Charsets.UTF_8)
+            } catch (_: Exception) {
+                readme.content
+            }
+        } else {
             readme.content
         }
     }
@@ -174,10 +189,10 @@ class GithubApi(
             val resources = jsonObject.getAsJsonObject("resources")
             val core = resources.getAsJsonObject("core")
             ApiRateLimit(
-                limit = core.get("limit").asInt,
-                remaining = core.get("remaining").asInt,
-                reset = core.get("reset").asLong,
-                used = core.get("used").asInt
+                limit = core.getAsJsonPrimitive("limit")?.asInt ?: 0,
+                remaining = core.getAsJsonPrimitive("remaining")?.asInt ?: 0,
+                reset = core.getAsJsonPrimitive("reset")?.asLong ?: 0,
+                used = core.getAsJsonPrimitive("used")?.asInt ?: 0
             )
         } catch (_: Exception) {
             null
@@ -188,31 +203,43 @@ class GithubApi(
         return withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder().url(url).build()
-                val response = client.newCall(request).execute()
-                if (!response.isSuccessful) return@withContext false
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext false
 
-                val body = response.body ?: return@withContext false
-                val contentLength = body.contentLength()
-                var bytesRead = 0L
+                    val body = response.body ?: return@withContext false
+                    val contentLength = body.contentLength()
+                    var bytesRead = 0L
 
-                val destFile = java.io.File(destinationPath)
-                destFile.parentFile?.mkdirs()
+                    val destFile = java.io.File(destinationPath)
+                    destFile.parentFile?.mkdirs()
 
-                destFile.outputStream().use { output ->
-                    body.byteStream().use { input ->
-                        val buffer = ByteArray(8192)
-                        var bytes = input.read(buffer)
-                        while (bytes >= 0) {
-                            output.write(buffer, 0, bytes)
-                            bytesRead += bytes
-                            withContext(Dispatchers.Main) {
-                                onProgress(bytesRead, contentLength)
+                    destFile.outputStream().use { output ->
+                        body.byteStream().use { input ->
+                            val buffer = ByteArray(8192)
+                            var bytes = input.read(buffer)
+                            var lastUpdateTime = 0L
+                            while (bytes >= 0) {
+                                output.write(buffer, 0, bytes)
+                                bytesRead += bytes
+                                val now = System.currentTimeMillis()
+                                if (now - lastUpdateTime > 100) {
+                                    withContext(Dispatchers.Main) {
+                                        onProgress(bytesRead, contentLength)
+                                    }
+                                    lastUpdateTime = now
+                                }
+                                bytes = input.read(buffer)
                             }
-                            bytes = input.read(buffer)
                         }
                     }
+                    // Final progress update
+                    withContext(Dispatchers.Main) {
+                        onProgress(bytesRead, contentLength)
+                    }
+                    true
                 }
-                true
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 false
             }

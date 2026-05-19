@@ -96,7 +96,6 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 owner = owner,
                                 repoName = repo,
-                                downloadDir = "",
                                 onBack = { navController.popBackStack() }
                             )
                         }

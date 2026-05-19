@@ -9,6 +9,7 @@ import com.githubstore.util.FavoritesManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
@@ -41,13 +42,13 @@ class HomeViewModel(
         if (state.isLoading && !forceRefresh) return
 
         viewModelScope.launch {
-            _uiState.value = state.copy(
+            _uiState.update { it.copy(
                 isLoading = true,
                 error = null,
                 isRateLimited = false,
                 currentCategory = category,
                 currentPage = 1
-            )
+            ) }
 
             val result = when (category) {
                 "trending" -> repository.getTrending(page = 1)
@@ -61,24 +62,27 @@ class HomeViewModel(
 
             when (result) {
                 is RepositoryResult.Success -> {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         repos = result.repos,
                         isLoading = false,
+                        isRefreshing = false,
                         hasMorePages = result.repos.size >= 30,
                         favorites = favoritesManager.favorites
-                    )
+                    ) }
                 }
                 is RepositoryResult.Error -> {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isLoading = false,
+                        isRefreshing = false,
                         error = result.message
-                    )
+                    ) }
                 }
                 is RepositoryResult.RateLimited -> {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isLoading = false,
+                        isRefreshing = false,
                         isRateLimited = true
-                    )
+                    ) }
                 }
             }
         }
@@ -90,31 +94,31 @@ class HomeViewModel(
             return
         }
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
+            _uiState.update { it.copy(
                 isLoading = true,
                 searchQuery = query,
                 error = null
-            )
+            ) }
             val result = repository.searchApps(query)
             when (result) {
                 is RepositoryResult.Success -> {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         repos = result.repos,
                         isLoading = false,
                         hasMorePages = result.repos.size >= 30
-                    )
+                    ) }
                 }
                 is RepositoryResult.Error -> {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         error = result.message
-                    )
+                    ) }
                 }
                 is RepositoryResult.RateLimited -> {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         isRateLimited = true
-                    )
+                    ) }
                 }
             }
         }
@@ -125,7 +129,7 @@ class HomeViewModel(
         if (state.isLoading || !state.hasMorePages || state.isRateLimited) return
 
         viewModelScope.launch {
-            _uiState.value = state.copy(isLoading = true)
+            _uiState.update { it.copy(isLoading = true) }
             val nextPage = state.currentPage + 1
 
             val result = when {
@@ -143,36 +147,33 @@ class HomeViewModel(
             when (result) {
                 is RepositoryResult.Success -> {
                     val newRepos = state.repos + result.repos
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         repos = newRepos,
                         isLoading = false,
                         currentPage = nextPage,
                         hasMorePages = result.repos.size >= 30
-                    )
+                    ) }
                 }
                 is RepositoryResult.Error -> {
-                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    _uiState.update { it.copy(isLoading = false) }
                 }
                 is RepositoryResult.RateLimited -> {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isLoading = false,
                         isRateLimited = true
-                    )
+                    ) }
                 }
             }
         }
     }
 
     fun toggleFavorite(repoFullName: String) {
-        val isNowFavorite = favoritesManager.toggleFavorite(repoFullName)
-        val newFavorites = favoritesManager.favorites
-        _uiState.value = _uiState.value.copy(favorites = newFavorites)
+        favoritesManager.toggleFavorite(repoFullName)
+        _uiState.update { it.copy(favorites = favoritesManager.favorites) }
     }
 
     fun refresh() {
-        val state = _uiState.value
-        _uiState.value = state.copy(isRefreshing = true)
-        loadRepos(state.currentCategory, forceRefresh = true)
-        _uiState.value = _uiState.value.copy(isRefreshing = false)
+        _uiState.update { it.copy(isRefreshing = true) }
+        loadRepos(_uiState.value.currentCategory, forceRefresh = true)
     }
 }

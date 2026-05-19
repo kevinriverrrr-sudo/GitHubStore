@@ -22,10 +22,6 @@ fun FavoritesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.loadFavorites()
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(

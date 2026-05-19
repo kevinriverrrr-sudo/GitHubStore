@@ -13,6 +13,7 @@ import com.githubstore.util.FavoritesManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -39,56 +40,52 @@ class DetailViewModel(
 
     fun loadRepoDetails(owner: String, repoName: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
             val repo = repository.getRepoDetails(owner, repoName)
             if (repo != null) {
-                _uiState.value = _uiState.value.copy(
+                _uiState.update { it.copy(
                     repo = repo,
                     isFavorite = favoritesManager.isFavorite(repo.full_name)
-                )
+                ) }
             } else {
-                _uiState.value = _uiState.value.copy(
+                _uiState.update { it.copy(
                     isLoading = false,
                     error = "Failed to load repository"
-                )
+                ) }
                 return@launch
             }
 
             // Load releases
             val releases = repository.getReleases(owner, repoName)
             val installable = repository.findInstallableAssets(releases)
-            _uiState.value = _uiState.value.copy(
+            _uiState.update { it.copy(
                 releases = releases,
                 installableAssets = installable
-            )
+            ) }
 
             // Load readme
             val readme = repository.getReadme(owner, repoName)
-            _uiState.value = _uiState.value.copy(
+            _uiState.update { it.copy(
                 readme = readme,
                 isLoading = false
-            )
+            ) }
         }
     }
 
     fun toggleFavorite() {
         val repo = _uiState.value.repo ?: return
         val isNowFavorite = favoritesManager.toggleFavorite(repo.full_name)
-        _uiState.value = _uiState.value.copy(isFavorite = isNowFavorite)
+        _uiState.update { it.copy(isFavorite = isNowFavorite) }
     }
 
-    fun downloadAndInstall(
-        context: Context,
-        asset: ReleaseAsset,
-        downloadDir: String? = null
-    ) {
+    fun downloadAndInstall(context: Context, asset: ReleaseAsset) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
+            _uiState.update { it.copy(
                 isDownloading = true,
                 downloadProgress = 0f,
                 downloadStatus = "downloading"
-            )
+            ) }
 
             try {
                 val fileName = asset.name
@@ -103,28 +100,28 @@ class DetailViewModel(
                     destinationPath = destPath
                 ) { bytesRead, totalBytes ->
                     val progress = if (totalBytes > 0) bytesRead.toFloat() / totalBytes else 0f
-                    _uiState.value = _uiState.value.copy(downloadProgress = progress)
+                    _uiState.update { it.copy(downloadProgress = progress) }
                 }
 
                 if (success) {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isDownloading = false,
                         downloadStatus = "complete"
-                    )
+                    ) }
                     if (fileName.endsWith(".apk", ignoreCase = true)) {
                         installApk(context, destPath)
                     }
                 } else {
-                    _uiState.value = _uiState.value.copy(
+                    _uiState.update { it.copy(
                         isDownloading = false,
                         downloadStatus = "failed"
-                    )
+                    ) }
                 }
             } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(
+                _uiState.update { it.copy(
                     isDownloading = false,
                     downloadStatus = "failed"
-                )
+                ) }
             }
         }
     }
@@ -134,16 +131,11 @@ class DetailViewModel(
             val file = File(filePath)
             if (!file.exists()) return
 
-            val uri: Uri = try {
-                FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
-                )
-            } catch (_: Exception) {
-                @Suppress("DEPRECATION")
-                Uri.fromFile(file)
-            }
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")
@@ -151,6 +143,8 @@ class DetailViewModel(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+            // FileProvider failed - APK install not possible without it
+        }
     }
 }

@@ -3,26 +3,32 @@ package com.githubstore.util
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Collections
 
 class FavoritesManager(context: Context) {
     private val gson = Gson()
     private val favoritesFile = File(context.filesDir, "favorites.json")
 
-    private var favoritesInternal: MutableSet<String> = loadFavorites()
+    @Volatile
+    private var favoritesInternal: MutableSet<String> = Collections.synchronizedSet(loadFavorites())
 
-    val favorites: Set<String> get() = favoritesInternal.toSet()
+    val favorites: Set<String> get() = synchronized(favoritesInternal) { favoritesInternal.toSet() }
 
-    fun isFavorite(repoFullName: String): Boolean = favoritesInternal.contains(repoFullName)
+    fun isFavorite(repoFullName: String): Boolean = synchronized(favoritesInternal) {
+        favoritesInternal.contains(repoFullName)
+    }
 
-    fun toggleFavorite(repoFullName: String): Boolean {
+    fun toggleFavorite(repoFullName: String): Boolean = synchronized(favoritesInternal) {
         return if (favoritesInternal.contains(repoFullName)) {
             favoritesInternal.remove(repoFullName)
-            saveFavorites()
+            saveFavoritesAsync()
             false
         } else {
             favoritesInternal.add(repoFullName)
-            saveFavorites()
+            saveFavoritesAsync()
             true
         }
     }
@@ -41,9 +47,14 @@ class FavoritesManager(context: Context) {
         }
     }
 
-    private fun saveFavorites() {
+    private fun saveFavoritesAsync() {
         try {
-            favoritesFile.writeText(gson.toJson(favoritesInternal))
+            Thread {
+                try {
+                    val json = synchronized(favoritesInternal) { gson.toJson(favoritesInternal) }
+                    favoritesFile.writeText(json)
+                } catch (_: Exception) {}
+            }.start()
         } catch (_: Exception) {}
     }
 }
