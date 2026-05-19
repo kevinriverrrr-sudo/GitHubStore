@@ -1,0 +1,41 @@
+GitHub Store turns GitHub into a fully-featured app store.
+
+Browse, discover, and install open source applications directly from GitHub repositories with a beautiful Material Design 3 interface.
+
+FEATURES
+
+Browse and Search
+Explore trending repositories or search for anything on GitHub. Filter by platform: Android, Desktop, Linux, and iOS.
+
+One-Click Install
+Download and install APKs directly from GitHub releases with a single tap.
+
+Favorites
+Save your favorite repositories for quick access. Favorites are stored locally on your device.
+
+Share
+Share any repository with friends via any messaging app.
+
+Infinite Scrolling
+Keep browsing as long as there are results — automatic pagination loads more repos as you scroll.
+
+Themes
+Beautiful dark, light, and system-default themes with Material You dynamic colors.
+
+Multi-Language
+Full support for English and Russian.
+
+Proxy Support
+Configure an HTTP proxy for restricted networks.
+
+Custom Download Folder
+Choose where downloaded files are saved.
+
+GitHub Token
+Works without authentication (60 requests/hour). Add your personal access token for 5,000 requests/hour.
+
+Rate Limit Monitor
+Track your GitHub API usage in real-time from Settings.
+
+TECH STACK
+Kotlin, Jetpack Compose, Material Design 3, GitHub REST API v3, OkHttp, Coil, DataStore, Navigation Compose
