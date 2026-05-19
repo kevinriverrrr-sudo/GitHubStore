@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="GitHub Store — Discover and install open source apps from GitHub. A modern Android app store powered by GitHub API.">
+  <meta name="theme-color" content="#0D1117">
+  <meta property="og:title" content="GitHub Store — Android App Store from GitHub">
+  <meta property="og:description" content="Browse, discover, and install open-source apps directly from GitHub with a beautiful Material Design 3 interface.">
+  <meta property="og:type" content="website">
+  <title>GitHub Store — Discover Open Source Android Apps</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Animated background -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-logo">
+        <svg class="nav-logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="10" fill="url(#logo-grad)"/>
+          <path d="M12 28V18L20 12L28 18V28L24 26V20H16V26L12 28Z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+          <defs><linearGradient id="logo-grad" x1="0" y1="0" x2="40" y2="40"><stop stop-color="#58A6FF"/><stop offset="1" stop-color="#1F6FEB"/></linearGradient></defs>
+        </svg>
+        <span>GitHub Store</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#screenshots">Screenshots</a>
+        <a href="#tech">Tech Stack</a>
+        <a href="https://github.com/kevinriverrrr-sudo/GitHubStore" target="_blank" class="nav-github">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+      <button class="nav-burger" id="navBurger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile menu -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#features" class="mobile-link">Features</a>
+    <a href="#screenshots" class="mobile-link">Screenshots</a>
+    <a href="#tech" class="mobile-link">Tech Stack</a>
+    <a href="https://github.com/kevinriverrrr-sudo/GitHubStore" target="_blank" class="mobile-link">GitHub</a>
+  </div>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Open Source &middot; Free &middot; Material Design 3
+      </div>
+      <h1 class="hero-title">
+        Discover Open Source<br>
+        <span class="gradient-text">Apps on GitHub</span>
+      </h1>
+      <p class="hero-desc">
+        GitHub Store transforms GitHub into a beautiful app store. Browse trending repositories,
+        search for apps, and install APKs directly from releases &mdash; all with a modern
+        Material You interface.
+      </p>
+      <div class="hero-actions">
+        <a href="https://github.com/kevinriverrrr-sudo/GitHubStore/releases/download/v1.0.0/GitHubStore-v1.0.0-release-signed.apk" class="btn btn-primary" id="downloadBtn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download APK
+          <span class="btn-size">11.5 MB</span>
+        </a>
+        <a href="https://github.com/kevinriverrrr-sudo/GitHubStore" target="_blank" class="btn btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          View Source
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-value">v1.0.0</span>
+          <span class="stat-label">Latest Release</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-value">26+</span>
+          <span class="stat-label">API 26+</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-value">MIT</span>
+          <span class="stat-label">License</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-phone">
+      <div class="phone-mockup">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-header">
+            <div class="phone-search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <span>Search apps on GitHub...</span>
+            </div>
+          </div>
+          <div class="phone-chips">
+            <span class="chip active">All</span>
+            <span class="chip">Android</span>
+            <span class="chip">Desktop</span>
+          </div>
+          <div class="phone-cards">
+            <div class="phone-card">
+              <div class="phone-card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
+              <div class="phone-card-info">
+                <div class="phone-card-name">Awesome App</div>
+                <div class="phone-card-desc">A great open source tool</div>
+                <div class="phone-card-meta">
+                  <span class="star">&#9733; 2.4k</span>
+                  <span class="lang-dot" style="background:#F18E33;"></span>
+                  <span>Kotlin</span>
+                </div>
+              </div>
+            </div>
+            <div class="phone-card">
+              <div class="phone-card-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              </div>
+              <div class="phone-card-info">
+                <div class="phone-card-name">DevTool Pro</div>
+                <div class="phone-card-desc">Developer utilities suite</div>
+                <div class="phone-card-meta">
+                  <span class="star">&#9733; 891</span>
+                  <span class="lang-dot" style="background:#3178C6;"></span>
+                  <span>TypeScript</span>
+                </div>
+              </div>
+            </div>
+            <div class="phone-card">
+              <div class="phone-card-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 3v18M5.5 7.5L12 3l6.5 4.5M5.5 16.5L12 21l6.5-4.5"/></svg>
+              </div>
+              <div class="phone-card-info">
+                <div class="phone-card-name">UI Kit</div>
+                <div class="phone-card-desc">Modern components library</div>
+                <div class="phone-card-meta">
+                  <span class="star">&#9733; 5.1k</span>
+                  <span class="lang-dot" style="background:#41B883;"></span>
+                  <span>Vue</span>
+                </div>
+              </div>
+            </div>
+            <div class="phone-card">
+              <div class="phone-card-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div class="phone-card-info">
+                <div class="phone-card-name">SecurePass</div>
+                <div class="phone-card-desc">Password manager &amp; vault</div>
+                <div class="phone-card-meta">
+                  <span class="star">&#9733; 1.2k</span>
+                  <span class="lang-dot" style="background:#A97BFF;"></span>
+                  <span>Kotlin</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag">Features</span>
+        <h2 class="section-title">Everything you need,<br><span class="gradient-text">nothing you don't</span></h2>
+        <p class="section-desc">Built with simplicity and power in mind. GitHub Store gives you a first-class experience for discovering and installing open source apps.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #58A6FF22, #1F6FEB22);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58A6FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <h3>Smart Search</h3>
+          <p>Search across millions of GitHub repositories. Filter by platform &mdash; Android, Desktop, Linux, iOS &mdash; and discover trending projects.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #3FB95022, #23863622);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3FB950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <h3>One-Click Install</h3>
+          <p>Download APK files directly from GitHub releases with a single tap. No need to browse the web &mdash; everything is right in the app.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #F778BA22, #DA363322);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F778BA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <h3>Favorites</h3>
+          <p>Save your favorite repositories for quick access later. Your curated collection of must-have open source apps, always at hand.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #D2A8FF22, #8B5CF622);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D2A8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          </div>
+          <h3>Dark &amp; Light Themes</h3>
+          <p>Full Material You support with system-auto, dark, and light modes. The app adapts beautifully to your preference.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #FFA65722, #D2992222);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFA657" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <h3>Multi-Language</h3>
+          <p>Full English and Russian localization out of the box. Clean, native strings &mdash; no machine translations.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: linear-gradient(135deg, #79C0FF22, #388BFD22);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#79C0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Works Without Login</h3>
+          <p>No account needed. Use the app immediately with GitHub's public API (60 req/hr). Add a token for 5,000 req/hr.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots Section -->
+  <section class="screenshots" id="screenshots">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag">Screenshots</span>
+        <h2 class="section-title">Beautiful on every<br><span class="gradient-text">screen size</span></h2>
+        <p class="section-desc">Material Design 3 meets functional utility. Every screen is crafted for clarity, speed, and visual appeal.</p>
+      </div>
+      <div class="screenshots-grid">
+        <div class="screenshot-card">
+          <div class="screenshot-label">Home</div>
+          <div class="screenshot-img-wrapper">
+            <img src="https://github.com/kevinriverrrr-sudo/GitHubStore/releases/download/v1.0.0/screenshot_home.png" alt="Home Screen" loading="lazy">
+          </div>
+        </div>
+        <div class="screenshot-card">
+          <div class="screenshot-label">App Detail</div>
+          <div class="screenshot-img-wrapper">
+            <img src="https://github.com/kevinriverrrr-sudo/GitHubStore/releases/download/v1.0.0/screenshot_detail.png" alt="Detail Screen" loading="lazy">
+          </div>
+        </div>
+        <div class="screenshot-card">
+          <div class="screenshot-label">Settings</div>
+          <div class="screenshot-img-wrapper">
+            <img src="https://github.com/kevinriverrrr-sudo/GitHubStore/releases/download/v1.0.0/screenshot_settings.png" alt="Settings Screen" loading="lazy">
+          </div>
+        </div>
+        <div class="screenshot-card">
+          <div class="screenshot-label">Favorites</div>
+          <div class="screenshot-img-wrapper">
+            <img src="https://github.com/kevinriverrrr-sudo/GitHubStore/releases/download/v1.0.0/screenshot_favorites.png" alt="Favorites Screen" loading="lazy">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack Section -->
+  <section class="tech" id="tech">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag">Tech Stack</span>
+        <h2 class="section-title">Built with<br><span class="gradient-text">modern tools</span></h2>
+        <p class="section-desc">A clean, maintainable architecture using the best Android development has to offer.</p>
+      </div>
+      <div class="tech-grid">
+        <div class="tech-card">
+          <div class="tech-logo kotlin-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M8.5 25H26L13.5 3 2 25h6.5z" fill="url(#kotlin-grad)"/><defs><linearGradient id="kotlin-grad" x1="14" y1="3" x2="2" y2="25"><stop stop-color="#7F52FF"/><stop offset="1" stop-color="#C711E1"/></linearGradient></defs></svg>
+          </div>
+          <h4>Kotlin</h4>
+          <p>Modern, concise, and safe language for Android development</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-logo compose-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="3" y="3" width="26" height="26" rx="4" fill="#4285F4"/><rect x="8" y="8" width="16" height="16" rx="3" fill="#FFC107"/><rect x="14" y="14" width="10" height="10" rx="2" fill="#3DDC84"/></svg>
+          </div>
+          <h4>Jetpack Compose</h4>
+          <p>Declarative UI toolkit for building native Android interfaces</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-logo m3-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" fill="#D0BCFF"/><path d="M16 8c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm-3 11l-3-3 1.4-1.4L13 16.2l5.6-5.6L20 12l-7 7z" fill="#6750A4"/></svg>
+          </div>
+          <h4>Material 3</h4>
+          <p>Dynamic theming with Material You design language</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-logo github-api-logo">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="#0D1117"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          </div>
+          <h4>GitHub API v3</h4>
+          <p>RESTful API for repository search, releases, and READMEs</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-logo okhttp-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#000"/><circle cx="16" cy="16" r="9" stroke="#FFC107" stroke-width="2"/><path d="M16 10v6l4 2" stroke="#FFC107" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h4>OkHttp</h4>
+          <p>Efficient HTTP client with proxy support and connection pooling</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-logo coil-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" fill="#283593"/><circle cx="16" cy="16" r="6" fill="#5C6BC0"/><circle cx="16" cy="16" r="2" fill="#fff"/></svg>
+          </div>
+          <h4>Coil</h4>
+          <p>Fast, lightweight image loading library for Android</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta">
+    <div class="section-container">
+      <div class="cta-content">
+        <h2>Ready to explore<br><span class="gradient-text">open source?</span></h2>
+        <p>Download GitHub Store now and discover thousands of free apps directly from GitHub.</p>
+        <a href="https://github.com/kevinriverrrr-sudo/GitHubStore/releases/download/v1.0.0/GitHubStore-v1.0.0-release-signed.apk" class="btn btn-primary btn-lg">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download APK &mdash; v1.0.0
+        </a>
+        <div class="cta-meta">
+          <span>Android 8.0+</span>
+          <span class="cta-sep">&middot;</span>
+          <span>11.5 MB</span>
+          <span class="cta-sep">&middot;</span>
+          <span>MIT License</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a href="#" class="nav-logo">
+            <svg class="nav-logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="10" fill="url(#logo-grad2)"/>
+              <path d="M12 28V18L20 12L28 18V28L24 26V20H16V26L12 28Z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+              <defs><linearGradient id="logo-grad2" x1="0" y1="0" x2="40" y2="40"><stop stop-color="#58A6FF"/><stop offset="1" stop-color="#1F6FEB"/></linearGradient></defs>
+            </svg>
+            <span>GitHub Store</span>
+          </a>
+          <p class="footer-desc">Transform GitHub into a beautiful app store. Discover and install open source apps on Android.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h4>Project</h4>
+            <a href="https://github.com/kevinriverrrr-sudo/GitHubStore/releases" target="_blank">Releases</a>
+            <a href="https://github.com/kevinriverrrr-sudo/GitHubStore/issues" target="_blank">Issues</a>
+            <a href="https://github.com/kevinriverrrr-sudo/GitHubStore/blob/main/LICENSE" target="_blank">License</a>
+          </div>
+          <div class="footer-col">
+            <h4>Resources</h4>
+            <a href="https://github.com/kevinriverrrr-sudo/GitHubStore" target="_blank">Source Code</a>
+            <a href="#features">Features</a>
+            <a href="#screenshots">Screenshots</a>
+          </div>
+          <div class="footer-col">
+            <h4>Download</h4>
+            <a href="https://github.com/kevinriverrrr-sudo/GitHubStore/releases/download/v1.0.0/GitHubStore-v1.0.0-release-signed.apk">APK (Signed)</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2025 GitHub Store. Open source under MIT License.</p>
+        <div class="footer-socials">
+          <a href="https://github.com/kevinriverrrr-sudo/GitHubStore" target="_blank" aria-label="GitHub">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
