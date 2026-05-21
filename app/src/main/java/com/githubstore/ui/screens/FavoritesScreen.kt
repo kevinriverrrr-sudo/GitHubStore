@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +28,7 @@ fun FavoritesScreen(
                 title = { Text("Favorites") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -84,7 +84,8 @@ fun FavoritesScreen(
                             repo = repo,
                             isFavorite = true,
                             onClick = {
-                                val ownerLogin = repo.owner?.login ?: return@RepoCard
+                                val ownerLogin = repo.owner?.login?.takeIf { it.isNotBlank() } ?: return@RepoCard
+                                if (repo.name.isBlank()) return@RepoCard
                                 onRepoClick(ownerLogin, repo.name)
                             },
                             onFavoriteClick = { viewModel.removeFavorite(repo.full_name) }

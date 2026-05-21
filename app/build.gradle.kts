@@ -10,10 +10,21 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../release.keystore")
-            storePassword = "githubstore123"
-            keyAlias = "githubstore"
-            keyPassword = "githubstore123"
+            // For production releases, override via gradle.properties / env:
+            //   KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+            val keystorePath = (project.findProperty("KEYSTORE_PATH") as String?)
+                ?: System.getenv("KEYSTORE_PATH")
+                ?: rootProject.file("release.keystore").absolutePath
+            val keystoreFile = file(keystorePath)
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = (project.findProperty("KEYSTORE_PASSWORD") as String?)
+                    ?: System.getenv("KEYSTORE_PASSWORD") ?: "githubstore123"
+                keyAlias = (project.findProperty("KEY_ALIAS") as String?)
+                    ?: System.getenv("KEY_ALIAS") ?: "githubstore"
+                keyPassword = (project.findProperty("KEY_PASSWORD") as String?)
+                    ?: System.getenv("KEY_PASSWORD") ?: "githubstore123"
+            }
         }
     }
 
@@ -21,8 +32,8 @@ android {
         applicationId = "com.githubstore"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "2.1.0"
+        versionCode = 5
+        versionName = "2.1.1"
     }
 
     buildTypes {
@@ -32,7 +43,12 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+            // Only sign if keystore is configured; otherwise produce an unsigned APK
+            // that the developer can sign themselves.
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile?.exists() == true) {
+                signingConfig = releaseSigning
+            }
         }
     }
 
@@ -64,7 +80,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-            output.outputFileName = "GitHubStore-${versionName}.apk"
+            output.outputFileName = "GitHubStore-${defaultConfig.versionName}.apk"
         }
     }
 }

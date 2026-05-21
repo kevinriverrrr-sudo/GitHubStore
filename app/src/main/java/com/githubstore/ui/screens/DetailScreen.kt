@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
@@ -53,7 +56,7 @@ fun DetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -81,7 +84,7 @@ fun DetailScreen(
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(repo.html_url))
                             context.startActivity(intent)
                         }) {
-                            Icon(Icons.Default.OpenInNew, contentDescription = "Open in browser")
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Open in browser")
                         }
                     }
                 },
@@ -162,7 +165,7 @@ fun DetailScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         StatItem(Icons.Default.Star, "${formatCount(repo.stargazers_count)}", "Stars", StarYellow)
-                        StatItem(Icons.Default.CallSplit, "${formatCount(repo.forks_count)}", "Forks", MaterialTheme.colorScheme.primary)
+                        StatItem(Icons.AutoMirrored.Filled.CallSplit, "${formatCount(repo.forks_count)}", "Forks", MaterialTheme.colorScheme.primary)
                         StatItem(Icons.Default.Report, "${formatCount(repo.open_issues_count)}", "Issues", MaterialTheme.colorScheme.tertiary)
                     }
 
@@ -206,7 +209,7 @@ fun DetailScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             InfoRow("Language", repo.language ?: "Unknown")
                             repo.license?.let { InfoRow("License", it.name) }
-                            InfoRow("Size", "${formatSize(repo.size)}")
+                            InfoRow("Size", formatSizeKb(repo.size))
                             InfoRow("Updated", formatDate(repo.updated_at))
                         }
                     }
@@ -361,7 +364,7 @@ private fun DownloadRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                formatSize(asset.size),
+                formatSizeBytes(asset.size),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -391,14 +394,22 @@ private fun DownloadRow(
 }
 
 private fun formatCount(count: Int): String = when {
-    count >= 1_000_000 -> String.format("%.1fM", count / 1_000_000.0)
-    count >= 1_000 -> String.format("%.1fk", count / 1_000.0)
+    count >= 1_000_000 -> String.format(java.util.Locale.US, "%.1fM", count / 1_000_000.0)
+    count >= 1_000 -> String.format(java.util.Locale.US, "%.1fk", count / 1_000.0)
     else -> count.toString()
 }
 
-private fun formatSize(kb: Long): String = when {
-    kb >= 1_024 -> String.format("%.1f MB", kb / 1024.0)
+private fun formatSizeKb(kb: Long): String = when {
+    kb >= 1_048_576 -> String.format(java.util.Locale.US, "%.1f GB", kb / 1_048_576.0)
+    kb >= 1_024 -> String.format(java.util.Locale.US, "%.1f MB", kb / 1024.0)
     else -> "$kb KB"
+}
+
+private fun formatSizeBytes(bytes: Long): String = when {
+    bytes >= 1_073_741_824L -> String.format(java.util.Locale.US, "%.1f GB", bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1_048_576.0)
+    bytes >= 1_024L -> String.format(java.util.Locale.US, "%.1f KB", bytes / 1024.0)
+    else -> "$bytes B"
 }
 
 private fun formatDate(dateStr: String): String {

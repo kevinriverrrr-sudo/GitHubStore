@@ -30,25 +30,14 @@ class AppRepository(private val api: GithubApi) {
         }
     }
 
-    suspend fun getTrending(
-        category: String? = null,
-        page: Int = 1
-    ): RepositoryResult {
-        val lang = when (category) {
-            "android" -> "kotlin"
-            "ios" -> "swift"
-            else -> null
-        }
+    suspend fun getTrending(page: Int = 1): RepositoryResult {
         return try {
-            val repos = api.getTrendingRepositories(language = lang, page = page)
-            if (repos.isNotEmpty()) {
-                RepositoryResult.Success(repos, repos.size)
-            } else {
-                // Fallback to plain popular search if trending is empty (rare)
-                searchApps("stars:>1000", page = page)
-            }
+            val repos = api.getTrendingRepositories(page = page)
+            RepositoryResult.Success(repos, repos.size)
         } catch (e: GithubApi.RateLimitException) {
             RepositoryResult.RateLimited
+        } catch (e: GithubApi.UnauthorizedException) {
+            RepositoryResult.Error("Invalid token. Please re-login.")
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -56,51 +45,33 @@ class AppRepository(private val api: GithubApi) {
         }
     }
 
-    // More targeted Android query: must have android topic AND stars
-    suspend fun getAndroidApps(page: Int = 1): RepositoryResult {
-        // Filter strictly by android-related topics to match real Android apps, not generic "android" mentions.
-        return searchApps(
-            "topic:android-application stars:>200",
-            page = page
-        ).let { result ->
-            if (result is RepositoryResult.Success && result.repos.size < 5 && page == 1) {
-                // Broaden if too few hits
-                searchApps("topic:android stars:>500", page = page)
-            } else result
-        }
-    }
+    // Stable broad queries: page 2+ returns consistent results with page 1.
+    suspend fun getAndroidApps(page: Int = 1): RepositoryResult =
+        searchApps(queryForCategory("android"), page = page)
 
-    suspend fun getDesktopApps(page: Int = 1): RepositoryResult {
-        return searchApps(
-            "topic:desktop-application stars:>200",
-            page = page
-        ).let { result ->
-            if (result is RepositoryResult.Success && result.repos.size < 5 && page == 1) {
-                searchApps("topic:desktop-app stars:>200", page = page)
-            } else result
-        }
-    }
+    suspend fun getDesktopApps(page: Int = 1): RepositoryResult =
+        searchApps(queryForCategory("desktop"), page = page)
 
-    suspend fun getLinuxApps(page: Int = 1): RepositoryResult {
-        return searchApps(
-            "topic:linux-app stars:>100",
-            page = page
-        ).let { result ->
-            if (result is RepositoryResult.Success && result.repos.size < 5 && page == 1) {
-                searchApps("topic:linux stars:>500", page = page)
-            } else result
-        }
-    }
+    suspend fun getLinuxApps(page: Int = 1): RepositoryResult =
+        searchApps(queryForCategory("linux"), page = page)
 
-    suspend fun getIosApps(page: Int = 1): RepositoryResult {
-        return searchApps("topic:ios language:swift stars:>200", page = page)
-    }
+    suspend fun getIosApps(page: Int = 1): RepositoryResult =
+        searchApps(queryForCategory("ios"), page = page)
 
-    suspend fun getAllApps(page: Int = 1): RepositoryResult {
-        return searchApps("stars:>1000", page = page)
+    suspend fun getAllApps(page: Int = 1): RepositoryResult =
+        searchApps(queryForCategory("all"), page = page)
+
+    fun queryForCategory(category: String): String = when (category) {
+        "android" -> "topic:android stars:>500"
+        "desktop" -> "topic:desktop stars:>200"
+        "linux" -> "topic:linux stars:>500"
+        "ios" -> "topic:ios language:swift stars:>200"
+        "all" -> "stars:>1000"
+        else -> "stars:>500"
     }
 
     suspend fun getRepoDetails(owner: String, repo: String): GithubRepo? {
+        if (owner.isBlank() || repo.isBlank()) return null
         return try {
             api.getRepository(owner, repo)
         } catch (e: CancellationException) {
@@ -111,6 +82,7 @@ class AppRepository(private val api: GithubApi) {
     }
 
     suspend fun getReleases(owner: String, repo: String): List<GithubRelease> {
+        if (owner.isBlank() || repo.isBlank()) return emptyList()
         return try {
             api.getReleases(owner, repo)
         } catch (e: CancellationException) {
@@ -121,6 +93,7 @@ class AppRepository(private val api: GithubApi) {
     }
 
     suspend fun getLatestRelease(owner: String, repo: String): GithubRelease? {
+        if (owner.isBlank() || repo.isBlank()) return null
         return try {
             api.getLatestRelease(owner, repo)
         } catch (e: CancellationException) {
@@ -131,6 +104,7 @@ class AppRepository(private val api: GithubApi) {
     }
 
     suspend fun getReadme(owner: String, repo: String): String? {
+        if (owner.isBlank() || repo.isBlank()) return null
         return try {
             api.getReadme(owner, repo)
         } catch (e: CancellationException) {
@@ -160,25 +134,12 @@ class AppRepository(private val api: GithubApi) {
         return api.downloadFile(url, destinationPath, onProgress)
     }
 
-    fun findApkAsset(releases: List<GithubRelease>): ReleaseAsset? {
-        for (release in releases) {
-            if (release.draft) continue
-            for (asset in release.assets) {
-                if (asset.name.endsWith(".apk", ignoreCase = true) && asset.download_url.isNotBlank()) {
-                    return asset
-                }
-            }
-        }
-        return null
-    }
-
     fun findInstallableAssets(releases: List<GithubRelease>): List<ReleaseAsset> {
         val installableExtensions = listOf(
             ".apk", ".aab", ".exe", ".msi", ".dmg",
             ".deb", ".rpm", ".appimage", ".flatpak", ".snap",
             ".zip", ".tar.gz"
         )
-        // Skip drafts, return only assets with a valid download URL
         return releases.asSequence()
             .filter { !it.draft }
             .flatMap { release ->

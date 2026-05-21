@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -29,8 +30,16 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
+
+    // Keep local search input in sync with the view model's authoritative state
+    // (so clearing it from elsewhere or rotating the device reflects properly).
+    LaunchedEffect(uiState.searchQuery) {
+        if (uiState.searchQuery != searchQuery && !uiState.isSearching) {
+            searchQuery = uiState.searchQuery
+        }
+    }
 
     // Detect end of list for pagination
     val shouldLoadMore = remember {
@@ -88,7 +97,13 @@ fun HomeScreen(
             // Search bar
             StoreSearchBar(
                 query = searchQuery,
-                onQueryChange = { searchQuery = it },
+                onQueryChange = { newQuery ->
+                    val wasNonBlank = searchQuery.isNotBlank()
+                    searchQuery = newQuery
+                    if (wasNonBlank && newQuery.isBlank()) {
+                        viewModel.searchRepos("")
+                    }
+                },
                 onSearch = { viewModel.searchRepos(searchQuery) }
             )
 
@@ -103,27 +118,27 @@ fun HomeScreen(
             ) {
                 CategoryChip(
                     label = "Trending",
-                    isSelected = uiState.currentCategory == "trending",
+                    isSelected = uiState.currentCategory == "trending" && !uiState.isSearching,
                     color = MaterialTheme.colorScheme.primary,
-                    onClick = { viewModel.loadRepos("trending") }
+                    onClick = { searchQuery = ""; viewModel.loadRepos("trending") }
                 )
                 CategoryChip(
                     label = "Android",
-                    isSelected = uiState.currentCategory == "android",
+                    isSelected = uiState.currentCategory == "android" && !uiState.isSearching,
                     color = AndroidGreen,
-                    onClick = { viewModel.loadRepos("android") }
+                    onClick = { searchQuery = ""; viewModel.loadRepos("android") }
                 )
                 CategoryChip(
                     label = "Desktop",
-                    isSelected = uiState.currentCategory == "desktop",
+                    isSelected = uiState.currentCategory == "desktop" && !uiState.isSearching,
                     color = DesktopBlue,
-                    onClick = { viewModel.loadRepos("desktop") }
+                    onClick = { searchQuery = ""; viewModel.loadRepos("desktop") }
                 )
                 CategoryChip(
                     label = "Linux",
-                    isSelected = uiState.currentCategory == "linux",
+                    isSelected = uiState.currentCategory == "linux" && !uiState.isSearching,
                     color = LinuxOrange,
-                    onClick = { viewModel.loadRepos("linux") }
+                    onClick = { searchQuery = ""; viewModel.loadRepos("linux") }
                 )
             }
 
@@ -173,7 +188,13 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadRepos(uiState.currentCategory) }) {
+                            Button(onClick = {
+                                if (uiState.isSearching && uiState.searchQuery.isNotBlank()) {
+                                    viewModel.searchRepos(uiState.searchQuery)
+                                } else {
+                                    viewModel.loadRepos(uiState.currentCategory)
+                                }
+                            }) {
                                 Text("Retry")
                             }
                         }
@@ -205,7 +226,8 @@ fun HomeScreen(
                                 repo = repo,
                                 isFavorite = uiState.favorites.contains(repo.full_name),
                                 onClick = {
-                                    val ownerLogin = repo.owner?.login ?: return@RepoCard
+                                    val ownerLogin = repo.owner?.login?.takeIf { it.isNotBlank() } ?: return@RepoCard
+                                    if (repo.name.isBlank()) return@RepoCard
                                     onRepoClick(ownerLogin, repo.name)
                                 },
                                 onFavoriteClick = { viewModel.toggleFavorite(repo.full_name) }

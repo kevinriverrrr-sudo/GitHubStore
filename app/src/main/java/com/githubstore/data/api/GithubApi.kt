@@ -28,8 +28,9 @@ class GithubApi(
 
     private val baseUrl = "https://api.github.com"
 
-    // Public OAuth Client ID for the GitHub Store app (uses GitHub CLI's known public client id as fallback)
-    // Replace with your own OAuth App client_id by calling setOAuthClientId() if desired.
+    // Public client ID for GitHub OAuth Device Flow. Defaults to GitHub CLI's
+    // well-known public client ID so the flow works out-of-the-box. Users can
+    // override with their own OAuth App via setOAuthClientId().
     @Volatile
     private var oauthClientId: String = "178c6fc778ccc68e1d6a"
 
@@ -46,20 +47,37 @@ class GithubApi(
             .writeTimeout(60, TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
+            // Common headers for all requests
             .addInterceptor { chain ->
                 val original = chain.request()
                 val builder = original.newBuilder()
-                    .header("Accept", "application/vnd.github.v3+json")
-                    .header("User-Agent", "GitHubStore-Android/2.1")
-                    .header("X-GitHub-Api-Version", "2022-11-28")
-                authToken?.takeIf { it.isNotBlank() }?.let {
-                    builder.header("Authorization", "Bearer $it")
+                    .header("User-Agent", "GitHubStore-Android/2.1.1")
+                if (original.header("Accept") == null) {
+                    builder.header("Accept", "application/vnd.github.v3+json")
+                }
+                chain.proceed(builder.build())
+            }
+            // Authorization is added only for api.github.com requests, and is
+            // never sent to other hosts (e.g., release asset CDN, OAuth login).
+            .addNetworkInterceptor { chain ->
+                val original = chain.request()
+                val host = original.url.host
+                val isApiHost = host.equals("api.github.com", ignoreCase = true)
+                val builder = original.newBuilder()
+                if (isApiHost) {
+                    builder.header("X-GitHub-Api-Version", "2022-11-28")
+                    authToken?.takeIf { it.isNotBlank() }?.let {
+                        builder.header("Authorization", "Bearer $it")
+                    }
+                } else {
+                    // Defensive: strip any auth header that may have leaked in via redirects.
+                    builder.removeHeader("Authorization")
                 }
                 chain.proceed(builder.build())
             }
 
         val host = proxyHost
-        if (!host.isNullOrBlank() && proxyPort > 0) {
+        if (!host.isNullOrBlank() && proxyPort in 1..65535) {
             try {
                 val type = if (proxyType.equals("socks", ignoreCase = true)) {
                     Proxy.Type.SOCKS
@@ -68,7 +86,7 @@ class GithubApi(
                 }
                 val proxy = Proxy(type, InetSocketAddress.createUnresolved(host, proxyPort))
                 builder.proxy(proxy)
-            } catch (_: Exception) {}
+            } catch (_: Exception) { /* invalid proxy — fall back to direct */ }
         }
 
         return builder.build()
@@ -150,8 +168,6 @@ class GithubApi(
         page: Int = 1,
         perPage: Int = 30
     ): SearchResponse? {
-        // GitHub expects qualifiers to be raw (with `:`), but spaces must be encoded as `+`.
-        // URLEncoder turns spaces into `+` which is what we want; `:` is preserved.
         val encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8.name())
         val url = "$baseUrl/search/repositories?q=$encodedQuery" +
                 "&sort=$sort&order=$order&page=$page&per_page=$perPage"
@@ -161,7 +177,6 @@ class GithubApi(
     }
 
     suspend fun getTrendingRepositories(
-        language: String? = null,
         since: String = "weekly",
         page: Int = 1,
         perPage: Int = 30
@@ -171,35 +186,34 @@ class GithubApi(
             "monthly" -> "pushed:>${java.time.LocalDate.now().minusMonths(1)}"
             else -> "pushed:>${java.time.LocalDate.now().minusWeeks(1)}"
         }
-        val langFilter = if (!language.isNullOrBlank()) "language:$language " else ""
-        val query = "$langFilter$dateFilter stars:>100"
+        val query = "$dateFilter stars:>100"
         val result = searchRepositories(query, page = page, perPage = perPage)
         return result?.items ?: emptyList()
     }
 
     suspend fun getRepository(owner: String, repo: String): GithubRepo? {
-        val url = "$baseUrl/repos/$owner/$repo"
+        val url = "$baseUrl/repos/${URLEncoder.encode(owner, "UTF-8")}/${URLEncoder.encode(repo, "UTF-8")}"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<GithubRepo>() {}.type
         return executeRequest(request, type)
     }
 
     suspend fun getReleases(owner: String, repo: String): List<GithubRelease> {
-        val url = "$baseUrl/repos/$owner/$repo/releases?per_page=20"
+        val url = "$baseUrl/repos/${URLEncoder.encode(owner, "UTF-8")}/${URLEncoder.encode(repo, "UTF-8")}/releases?per_page=20"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<List<GithubRelease>>() {}.type
         return executeRequest(request, type) ?: emptyList()
     }
 
     suspend fun getLatestRelease(owner: String, repo: String): GithubRelease? {
-        val url = "$baseUrl/repos/$owner/$repo/releases/latest"
+        val url = "$baseUrl/repos/${URLEncoder.encode(owner, "UTF-8")}/${URLEncoder.encode(repo, "UTF-8")}/releases/latest"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<GithubRelease>() {}.type
         return executeRequest(request, type)
     }
 
     suspend fun getReadme(owner: String, repo: String): String? {
-        val url = "$baseUrl/repos/$owner/$repo/readme"
+        val url = "$baseUrl/repos/${URLEncoder.encode(owner, "UTF-8")}/${URLEncoder.encode(repo, "UTF-8")}/readme"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<ReadmeContent>() {}.type
         val readme = executeRequest<ReadmeContent>(request, type) ?: return null
@@ -242,7 +256,7 @@ class GithubApi(
         return executeRequest(request, type)
     }
 
-    // === OAuth Device Flow ===
+    // === OAuth Device Flow (github.com, NOT api.github.com — no auth header sent) ===
 
     suspend fun requestDeviceCode(scopes: String = "repo,read:user"): DeviceCodeResponse? {
         return withContext(Dispatchers.IO) {
@@ -255,7 +269,6 @@ class GithubApi(
                     .url("https://github.com/login/device/code")
                     .post(body)
                     .header("Accept", "application/json")
-                    .header("User-Agent", "GitHubStore-Android/2.1")
                     .build()
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext null
@@ -282,7 +295,6 @@ class GithubApi(
                     .url("https://github.com/login/oauth/access_token")
                     .post(body)
                     .header("Accept", "application/json")
-                    .header("User-Agent", "GitHubStore-Android/2.1")
                     .build()
                 client.newCall(request).execute().use { response ->
                     val text = response.body?.string() ?: return@withContext null
@@ -301,14 +313,12 @@ class GithubApi(
         return withContext(Dispatchers.IO) {
             try {
                 val requestBuilder = Request.Builder().url(url)
-                // For GitHub API release asset URLs, we need a different Accept header
                 if (url.startsWith("https://api.github.com/")) {
                     requestBuilder.header("Accept", "application/octet-stream")
                 }
                 val request = requestBuilder.build()
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext false
-
                     val body = response.body ?: return@withContext false
                     val contentLength = body.contentLength()
                     var bytesRead = 0L
