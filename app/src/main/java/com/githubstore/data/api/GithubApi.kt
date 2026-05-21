@@ -19,13 +19,19 @@ import java.util.concurrent.TimeUnit
 class GithubApi(
     @Volatile private var authToken: String? = null,
     @Volatile private var proxyHost: String? = null,
-    @Volatile private var proxyPort: Int = 0
+    @Volatile private var proxyPort: Int = 0,
+    @Volatile private var proxyType: String = "http"
 ) {
     private val gson: Gson = GsonBuilder()
         .setDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
         .create()
 
     private val baseUrl = "https://api.github.com"
+
+    // Public OAuth Client ID for the GitHub Store app (uses GitHub CLI's known public client id as fallback)
+    // Replace with your own OAuth App client_id by calling setOAuthClientId() if desired.
+    @Volatile
+    private var oauthClientId: String = "178c6fc778ccc68e1d6a"
 
     @Volatile
     private var _client: OkHttpClient? = null
@@ -36,21 +42,31 @@ class GithubApi(
     private fun buildHttpClient(): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .followSslRedirects(true)
             .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
-                    .addHeader("Accept", "application/vnd.github.v3+json")
-                    .addHeader("User-Agent", "GitHubStore-App")
-                authToken?.let {
-                    request.addHeader("Authorization", "Bearer $it")
+                val original = chain.request()
+                val builder = original.newBuilder()
+                    .header("Accept", "application/vnd.github.v3+json")
+                    .header("User-Agent", "GitHubStore-Android/2.1")
+                    .header("X-GitHub-Api-Version", "2022-11-28")
+                authToken?.takeIf { it.isNotBlank() }?.let {
+                    builder.header("Authorization", "Bearer $it")
                 }
-                chain.proceed(request.build())
+                chain.proceed(builder.build())
             }
 
-        if (!proxyHost.isNullOrBlank() && proxyPort > 0) {
+        val host = proxyHost
+        if (!host.isNullOrBlank() && proxyPort > 0) {
             try {
-                val proxy = Proxy(Proxy.Type.HTTP, InetSocketAddress(proxyHost, proxyPort))
+                val type = if (proxyType.equals("socks", ignoreCase = true)) {
+                    Proxy.Type.SOCKS
+                } else {
+                    Proxy.Type.HTTP
+                }
+                val proxy = Proxy(type, InetSocketAddress.createUnresolved(host, proxyPort))
                 builder.proxy(proxy)
             } catch (_: Exception) {}
         }
@@ -58,17 +74,26 @@ class GithubApi(
         return builder.build()
     }
 
-    fun updateProxy(host: String?, port: Int) {
+    fun updateProxy(host: String?, port: Int, type: String = "http") {
         proxyHost = host
         proxyPort = port
+        proxyType = type
         synchronized(this) {
             _client = buildHttpClient()
         }
     }
 
     fun updateToken(token: String?) {
-        authToken = token
+        authToken = token?.takeIf { it.isNotBlank() }
     }
+
+    fun getToken(): String? = authToken
+
+    fun setOAuthClientId(clientId: String) {
+        if (clientId.isNotBlank()) oauthClientId = clientId
+    }
+
+    fun getOAuthClientId(): String = oauthClientId
 
     private suspend fun <T> executeRequest(request: Request, typeToken: java.lang.reflect.Type): T? {
         return withContext(Dispatchers.IO) {
@@ -76,7 +101,13 @@ class GithubApi(
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         if (response.code == 403 || response.code == 429) {
-                            throw RateLimitException("API rate limit exceeded")
+                            val remaining = response.header("X-RateLimit-Remaining")
+                            if (remaining == "0" || response.code == 429) {
+                                throw RateLimitException("API rate limit exceeded")
+                            }
+                        }
+                        if (response.code == 401) {
+                            throw UnauthorizedException("Invalid GitHub token")
                         }
                         return@withContext null
                     }
@@ -85,9 +116,11 @@ class GithubApi(
                 }
             } catch (e: RateLimitException) {
                 throw e
+            } catch (e: UnauthorizedException) {
+                throw e
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: IOException) {
+            } catch (_: IOException) {
                 null
             } catch (_: Exception) {
                 null
@@ -117,8 +150,10 @@ class GithubApi(
         page: Int = 1,
         perPage: Int = 30
     ): SearchResponse? {
-        val encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8)
-        val url = "${baseUrl}/search/repositories?q=$encodedQuery" +
+        // GitHub expects qualifiers to be raw (with `:`), but spaces must be encoded as `+`.
+        // URLEncoder turns spaces into `+` which is what we want; `:` is preserved.
+        val encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8.name())
+        val url = "$baseUrl/search/repositories?q=$encodedQuery" +
                 "&sort=$sort&order=$order&page=$page&per_page=$perPage"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<SearchResponse>() {}.type
@@ -127,44 +162,44 @@ class GithubApi(
 
     suspend fun getTrendingRepositories(
         language: String? = null,
-        since: String = "daily",
+        since: String = "weekly",
         page: Int = 1,
         perPage: Int = 30
     ): List<GithubRepo> {
         val dateFilter = when (since) {
-            "weekly" -> "created:>${java.time.LocalDate.now().minusWeeks(1)}"
-            "monthly" -> "created:>${java.time.LocalDate.now().minusMonths(1)}"
-            else -> "created:>${java.time.LocalDate.now().minusDays(1)}"
+            "daily" -> "pushed:>${java.time.LocalDate.now().minusDays(2)}"
+            "monthly" -> "pushed:>${java.time.LocalDate.now().minusMonths(1)}"
+            else -> "pushed:>${java.time.LocalDate.now().minusWeeks(1)}"
         }
         val langFilter = if (!language.isNullOrBlank()) "language:$language " else ""
-        val query = "$langFilter$dateFilter stars:>10"
+        val query = "$langFilter$dateFilter stars:>100"
         val result = searchRepositories(query, page = page, perPage = perPage)
         return result?.items ?: emptyList()
     }
 
     suspend fun getRepository(owner: String, repo: String): GithubRepo? {
-        val url = "${baseUrl}/repos/$owner/$repo"
+        val url = "$baseUrl/repos/$owner/$repo"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<GithubRepo>() {}.type
         return executeRequest(request, type)
     }
 
     suspend fun getReleases(owner: String, repo: String): List<GithubRelease> {
-        val url = "${baseUrl}/repos/$owner/$repo/releases"
+        val url = "$baseUrl/repos/$owner/$repo/releases?per_page=20"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<List<GithubRelease>>() {}.type
         return executeRequest(request, type) ?: emptyList()
     }
 
     suspend fun getLatestRelease(owner: String, repo: String): GithubRelease? {
-        val url = "${baseUrl}/repos/$owner/$repo/releases/latest"
+        val url = "$baseUrl/repos/$owner/$repo/releases/latest"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<GithubRelease>() {}.type
         return executeRequest(request, type)
     }
 
     suspend fun getReadme(owner: String, repo: String): String? {
-        val url = "${baseUrl}/repos/$owner/$repo/readme"
+        val url = "$baseUrl/repos/$owner/$repo/readme"
         val request = Request.Builder().url(url).build()
         val type = object : TypeToken<ReadmeContent>() {}.type
         val readme = executeRequest<ReadmeContent>(request, type) ?: return null
@@ -199,10 +234,78 @@ class GithubApi(
         }
     }
 
-    suspend fun downloadFile(url: String, destinationPath: String, onProgress: (Long, Long) -> Unit): Boolean {
+    suspend fun getAuthenticatedUser(): GithubUser? {
+        if (authToken.isNullOrBlank()) return null
+        val url = "$baseUrl/user"
+        val request = Request.Builder().url(url).build()
+        val type = object : TypeToken<GithubUser>() {}.type
+        return executeRequest(request, type)
+    }
+
+    // === OAuth Device Flow ===
+
+    suspend fun requestDeviceCode(scopes: String = "repo,read:user"): DeviceCodeResponse? {
         return withContext(Dispatchers.IO) {
             try {
-                val request = Request.Builder().url(url).build()
+                val body = FormBody.Builder()
+                    .add("client_id", oauthClientId)
+                    .add("scope", scopes)
+                    .build()
+                val request = Request.Builder()
+                    .url("https://github.com/login/device/code")
+                    .post(body)
+                    .header("Accept", "application/json")
+                    .header("User-Agent", "GitHubStore-Android/2.1")
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+                    val text = response.body?.string() ?: return@withContext null
+                    gson.fromJson(text, DeviceCodeResponse::class.java)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    suspend fun pollAccessToken(deviceCode: String): AccessTokenResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = FormBody.Builder()
+                    .add("client_id", oauthClientId)
+                    .add("device_code", deviceCode)
+                    .add("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
+                    .build()
+                val request = Request.Builder()
+                    .url("https://github.com/login/oauth/access_token")
+                    .post(body)
+                    .header("Accept", "application/json")
+                    .header("User-Agent", "GitHubStore-Android/2.1")
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    val text = response.body?.string() ?: return@withContext null
+                    gson.fromJson(text, AccessTokenResponse::class.java)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    suspend fun downloadFile(url: String, destinationPath: String, onProgress: (Long, Long) -> Unit): Boolean {
+        if (url.isBlank()) return false
+        return withContext(Dispatchers.IO) {
+            try {
+                val requestBuilder = Request.Builder().url(url)
+                // For GitHub API release asset URLs, we need a different Accept header
+                if (url.startsWith("https://api.github.com/")) {
+                    requestBuilder.header("Accept", "application/octet-stream")
+                }
+                val request = requestBuilder.build()
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext false
 
@@ -232,7 +335,6 @@ class GithubApi(
                             }
                         }
                     }
-                    // Final progress update
                     withContext(Dispatchers.Main) {
                         onProgress(bytesRead, contentLength)
                     }
@@ -247,4 +349,5 @@ class GithubApi(
     }
 
     class RateLimitException(message: String) : Exception(message)
+    class UnauthorizedException(message: String) : Exception(message)
 }

@@ -22,3 +22,5 @@ out/
 release.keystore
 *.keystore
 *.jks
+release.keystore
+build_retry.sh

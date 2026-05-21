@@ -3,6 +3,8 @@ package com.githubstore.ui.viewmodel
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,6 +29,7 @@ data class DetailUiState(
     val isDownloading: Boolean = false,
     val downloadProgress: Float = 0f,
     val downloadStatus: String? = null,
+    val downloadingAssetId: Long? = null,
     val installableAssets: List<ReleaseAsset> = emptyList()
 )
 
@@ -80,56 +83,97 @@ class DetailViewModel(
     }
 
     fun downloadAndInstall(context: Context, asset: ReleaseAsset) {
+        if (_uiState.value.isDownloading) return
+        if (asset.download_url.isBlank()) {
+            Toast.makeText(context, "Download URL is missing", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(
                 isDownloading = true,
                 downloadProgress = 0f,
-                downloadStatus = "downloading"
+                downloadStatus = "downloading",
+                downloadingAssetId = asset.id
             ) }
 
             try {
-                val fileName = asset.name
-
-                // Use app's internal cache directory to avoid scoped storage issues
-                val cacheDir = File(context.cacheDir, "downloads")
-                if (!cacheDir.exists()) cacheDir.mkdirs()
-                val destPath = File(cacheDir, fileName).absolutePath
+                val fileName = asset.name.ifBlank { "download_${asset.id}.bin" }
+                val downloadsDir = File(context.getExternalFilesDir(null), "downloads").also {
+                    if (!it.exists()) it.mkdirs()
+                }
+                val destFile = File(downloadsDir, fileName)
+                if (destFile.exists()) destFile.delete()
 
                 val success = repository.downloadFile(
                     url = asset.download_url,
-                    destinationPath = destPath
+                    destinationPath = destFile.absolutePath
                 ) { bytesRead, totalBytes ->
                     val progress = if (totalBytes > 0) bytesRead.toFloat() / totalBytes else 0f
                     _uiState.update { it.copy(downloadProgress = progress) }
                 }
 
-                if (success) {
+                if (success && destFile.exists() && destFile.length() > 0) {
                     _uiState.update { it.copy(
                         isDownloading = false,
-                        downloadStatus = "complete"
+                        downloadStatus = "complete",
+                        downloadingAssetId = null
                     ) }
                     if (fileName.endsWith(".apk", ignoreCase = true)) {
-                        installApk(context, destPath)
+                        installApk(context, destFile)
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Downloaded: ${destFile.absolutePath}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        openFile(context, destFile)
                     }
                 } else {
+                    if (destFile.exists()) destFile.delete()
                     _uiState.update { it.copy(
                         isDownloading = false,
-                        downloadStatus = "failed"
+                        downloadStatus = "failed",
+                        downloadingAssetId = null
                     ) }
+                    Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show()
                 }
             } catch (_: Exception) {
                 _uiState.update { it.copy(
                     isDownloading = false,
-                    downloadStatus = "failed"
+                    downloadStatus = "failed",
+                    downloadingAssetId = null
                 ) }
+                Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun installApk(context: Context, filePath: String) {
+    private fun installApk(context: Context, file: File) {
         try {
-            val file = File(filePath)
-            if (!file.exists()) return
+            if (!file.exists()) {
+                Toast.makeText(context, "APK file not found", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // On API 26+ confirm unknown sources permission
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val canInstall = context.packageManager.canRequestPackageInstalls()
+                if (!canInstall) {
+                    try {
+                        val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                            .setData(Uri.parse("package:${context.packageName}"))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                        Toast.makeText(
+                            context,
+                            "Allow installation from this app, then tap Install again",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return
+                    } catch (_: Exception) {}
+                }
+            }
 
             val uri = FileProvider.getUriForFile(
                 context,
@@ -143,8 +187,24 @@ class DetailViewModel(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-        } catch (_: Exception) {
-            // FileProvider failed - APK install not possible without it
+        } catch (e: Exception) {
+            Toast.makeText(context, "Cannot install APK: ${e.message}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun openFile(context: Context, file: File) {
+        try {
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "*/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(Intent.createChooser(intent, "Open with"))
+        } catch (_: Exception) {}
     }
 }

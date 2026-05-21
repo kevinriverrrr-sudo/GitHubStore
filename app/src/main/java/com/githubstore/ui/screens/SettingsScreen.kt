@@ -1,6 +1,11 @@
 package com.githubstore.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -14,10 +19,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.githubstore.ui.viewmodel.SettingsViewModel
 
 
@@ -36,9 +44,20 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         uri?.let {
-            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            context.contentResolver.takePersistableUriPermission(uri, flags)
-            viewModel.setDownloadDir(uri.toString())
+            try {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+                viewModel.setDownloadDir(uri.toString())
+            } catch (_: Exception) {
+                Toast.makeText(context, "Cannot access folder", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.deviceLoginSuccess) {
+        if (uiState.deviceLoginSuccess) {
+            Toast.makeText(context, "Signed in!", Toast.LENGTH_SHORT).show()
+            viewModel.consumeDeviceLoginSuccess()
         }
     }
 
@@ -63,8 +82,23 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // GitHub Token section
+            // GitHub Account section
             SettingsSection(title = "GitHub Account") {
+                if (uiState.userLogin.isNotBlank()) {
+                    SettingsItem(
+                        icon = Icons.Default.AccountCircle,
+                        title = "Signed in as ${uiState.userLogin}",
+                        subtitle = "Tap to sign out",
+                        onClick = { viewModel.signOut() }
+                    )
+                } else {
+                    SettingsItem(
+                        icon = Icons.Default.Login,
+                        title = "Sign in with GitHub",
+                        subtitle = "Use device code login (recommended)",
+                        onClick = { viewModel.startDeviceLogin() }
+                    )
+                }
                 SettingsItem(
                     icon = Icons.Default.Key,
                     title = "GitHub Token",
@@ -112,7 +146,9 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.VpnLock,
                     title = "Proxy",
-                    subtitle = if (uiState.isProxyEnabled) "${uiState.proxyHost}:${uiState.proxyPort}" else "Disabled",
+                    subtitle = if (uiState.isProxyEnabled) {
+                        "${uiState.proxyType.uppercase()} ${uiState.proxyHost}:${uiState.proxyPort}"
+                    } else "Disabled",
                     onClick = { showProxyDialog = true }
                 )
             }
@@ -134,9 +170,14 @@ fun SettingsScreen(
                         icon = Icons.Default.DataUsage,
                         title = "Rate Limit",
                         subtitle = "${limit.remaining} / ${limit.limit} remaining",
-                        onClick = {}
+                        onClick = { viewModel.loadRateLimit() }
                     )
-                }
+                } ?: SettingsItem(
+                    icon = Icons.Default.DataUsage,
+                    title = "Rate Limit",
+                    subtitle = "Tap to refresh",
+                    onClick = { viewModel.loadRateLimit() }
+                )
             }
 
             // About
@@ -144,7 +185,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Info,
                     title = "Version",
-                    subtitle = "2.0.0",
+                    subtitle = "2.1.0",
                     onClick = {}
                 )
                 SettingsItem(
@@ -164,9 +205,10 @@ fun SettingsScreen(
         ProxyDialog(
             currentHost = uiState.proxyHost,
             currentPort = uiState.proxyPort,
+            currentType = uiState.proxyType,
             onDismiss = { showProxyDialog = false },
-            onSave = { host, port ->
-                viewModel.setProxy(host, port)
+            onSave = { host, port, type ->
+                viewModel.setProxy(host, port, type)
                 showProxyDialog = false
             }
         )
@@ -181,6 +223,21 @@ fun SettingsScreen(
                 viewModel.setAuthToken(token)
                 showTokenDialog = false
             }
+        )
+    }
+
+    // Device Code Login Dialog
+    if (uiState.deviceLoginInProgress || uiState.deviceCode != null) {
+        DeviceCodeDialog(
+            userCode = uiState.deviceCode?.userCode,
+            verificationUri = uiState.deviceCode?.verificationUri ?: "https://github.com/login/device",
+            error = uiState.deviceLoginError,
+            onCancel = { viewModel.cancelDeviceLogin() }
+        )
+    } else if (uiState.deviceLoginError != null) {
+        ErrorDialog(
+            message = uiState.deviceLoginError!!,
+            onDismiss = { viewModel.cancelDeviceLogin() }
         )
     }
 }
@@ -228,20 +285,50 @@ private fun SettingsItem(
 private fun ProxyDialog(
     currentHost: String,
     currentPort: Int,
+    currentType: String,
     onDismiss: () -> Unit,
-    onSave: (String, Int) -> Unit
+    onSave: (String, Int, String) -> Unit
 ) {
     var host by remember { mutableStateOf(currentHost) }
     var port by remember { mutableStateOf(if (currentPort > 0) currentPort.toString() else "") }
+    var type by remember { mutableStateOf(currentType) }
+    var expanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Proxy Settings") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = type.uppercase(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        listOf("http", "socks").forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.uppercase()) },
+                                onClick = {
+                                    type = option
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = host,
-                    onValueChange = { host = it },
+                    onValueChange = { host = it.trim() },
                     label = { Text("Host") },
                     placeholder = { Text("e.g., 127.0.0.1") },
                     singleLine = true,
@@ -249,26 +336,29 @@ private fun ProxyDialog(
                 )
                 OutlinedTextField(
                     value = port,
-                    onValueChange = { port = it.filter { c -> c.isDigit() } },
+                    onValueChange = { port = it.filter { c -> c.isDigit() }.take(5) },
                     label = { Text("Port") },
                     placeholder = { Text("e.g., 8080") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    "Leave host empty to disable proxy",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 val portNum = port.toIntOrNull() ?: 0
-                onSave(host, portNum)
+                onSave(host, portNum, type)
             }) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
@@ -281,6 +371,7 @@ private fun TokenDialog(
     onSave: (String) -> Unit
 ) {
     var token by remember { mutableStateOf(currentToken) }
+    var visible by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -289,10 +380,18 @@ private fun TokenDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = token,
-                    onValueChange = { token = it },
+                    onValueChange = { token = it.trim() },
                     label = { Text("Personal Access Token") },
                     placeholder = { Text("ghp_xxxxx...") },
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = if (visible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { visible = !visible }) {
+                            Icon(
+                                if (visible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = null
+                            )
+                        }
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -304,14 +403,100 @@ private fun TokenDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(token) }) {
-                Text("Save")
+            TextButton(onClick = { onSave(token) }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun DeviceCodeDialog(
+    userCode: String?,
+    verificationUri: String,
+    error: String?,
+    onCancel: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Sign in to GitHub") },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (userCode == null) {
+                    CircularProgressIndicator()
+                    Text("Requesting device code...")
+                } else {
+                    Text("Open this URL in your browser:", textAlign = TextAlign.Center)
+                    Text(
+                        verificationUri,
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.clickable {
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(verificationUri)))
+                            } catch (_: Exception) {}
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Then enter this code:", textAlign = TextAlign.Center)
+                    Text(
+                        userCode,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 32.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("user_code", userCode))
+                            Toast.makeText(context, "Code copied", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                    Text(
+                        "Tap to copy or open in browser",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Text(
+                        "Waiting for you to approve...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (error != null) {
+                    Text(error, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            if (userCode != null) {
+                TextButton(onClick = {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(verificationUri)))
+                    } catch (_: Exception) {}
+                }) { Text("Open browser") }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onCancel) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun ErrorDialog(message: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Error") },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("OK") }
         }
     )
 }
